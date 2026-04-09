@@ -32,21 +32,5 @@ pub fn setup(_exe_path: &str) -> anyhow::Result<()> {
 
     api::add_item(&apple_item)?;
 
-    // Add Space Separator
-    let mut sep_item = BarItem::new("space_separator".to_string(), ComponentPosition::Left);
-    sep_item.icon.icon = Some("|".to_string());
-
-    let mut sep_icon_props = Text::default();
-    sep_icon_props.color = Some(CATPUCCIN_MOCHA.surface2.clone());
-    sep_icon_props.padding_left = Some(6);
-    sep_icon_props.padding_right = Some(6);
-    sep_item.icon.props = Some(sep_icon_props);
-
-    let mut sep_label_props = Text::default();
-    sep_label_props.drawing = Some(false);
-    sep_item.label.props = Some(sep_label_props);
-
-    api::add_item(&sep_item)?;
-
     Ok(())
 }
