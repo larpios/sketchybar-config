@@ -20,8 +20,10 @@
           overlays = [fenix.overlays.default];
         };
 
+        inherit (pkgs) lib stdenv;
+
         naersk' = pkgs.callPackage naersk {};
-      in rec {
+      in {
         defaultPackage = naersk'.buildPackage {
           src = ./.;
         };
@@ -38,6 +40,7 @@
               "rustfmt"
             ])
           ];
+          env.RUSTFLAGS = lib.optionalString stdenv.isDarwin "-L ${pkgs.apple-sdk.sdkroot}/usr/lib";
         };
       }
     );
