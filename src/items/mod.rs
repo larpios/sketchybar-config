@@ -1,0 +1,10 @@
+pub mod apple;
+pub mod battery;
+pub mod bluetooth;
+pub mod clock;
+pub mod cpu;
+pub mod network;
+pub mod weather;
+pub mod workspaces;
+pub mod volume;
+pub mod media;

@@ -21,8 +21,28 @@ impl Property {
     }
 }
 
+#[macro_export]
+macro_rules! property {
+    ($property:expr, $value:expr) => {
+        Property::new($property, $value)
+    };
+    ($property:expr, $value:ident) => {
+        Property::new($property, stringify!($value))
+    };
+}
+
 pub trait ToSketchybarArgs {
     fn to_sketchybar_args(&self) -> Vec<Property>;
+}
+
+pub trait SketchyBool {
+    fn to_on_off(&self) -> String;
+}
+
+impl SketchyBool for bool {
+    fn to_on_off(&self) -> String {
+        if *self { "on" } else { "off" }.to_string()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -81,8 +101,8 @@ pub struct Font {
 impl Default for Font {
     fn default() -> Self {
         Self {
-            family: "Hack Nerd Font".to_string(),
-            type_: FontType::Bold,
+            family: "JetBrainsMono Nerd Font".to_string(),
+            type_: FontType::Regular,
             size: 14.0,
         }
     }

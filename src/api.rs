@@ -5,18 +5,32 @@ use anyhow::{Ok, Result};
 
 macro_rules! sb {
     ($args:ident) => {
-        Command::new("sketchybar").args($args).status()
+        {
+            let output = Command::new("sketchybar").args(&$args).output()?;
+            if !output.status.success() {
+                eprintln!("Error executing sketchybar command with args: {:?}", $args);
+                eprintln!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
+            }
+            Ok(())
+        }
     };
     ($($arg:expr),*) => {
-        Command::new("sketchybar").args([$($arg),*]).status()
+        {
+            let output = Command::new("sketchybar").args([$($arg),*]).output()?;
+            if !output.status.success() {
+                eprintln!("Error executing sketchybar command with args: {:?}", [$($arg),*]);
+                eprintln!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
+            }
+            Ok(())
+        }
     };
 }
 
 pub fn add_bar(bar: &super::props::bar::Bar) -> Result<()> {
     let mut args = vec!["--bar".to_string()];
 
-    args.extend_from_slice(
-        &bar.to_sketchybar_args()
+    args.extend(
+        bar.to_sketchybar_args()
             .iter()
             .map(|p| p.to_string())
             .collect::<Vec<String>>(),
@@ -27,26 +41,75 @@ pub fn add_bar(bar: &super::props::bar::Bar) -> Result<()> {
     Ok(())
 }
 
+pub fn set_default<I, S>(args: I) -> Result<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut cmd_args = vec!["--default".to_string()];
+    cmd_args.extend(args.into_iter().map(|s| s.as_ref().to_string()));
+    sb!(cmd_args)?;
+    Ok(())
+}
+
 pub fn add_item(item: &BarItem) -> Result<()> {
-    sb!(
-        "--add",
-        "item",
-        item.name.as_str(),
-        item.geometry.position.to_string().as_str()
-    )?;
+    // Remove if exists (silently)
+    let _ = Command::new("sketchybar")
+        .arg("--remove")
+        .arg(&item.name)
+        .output();
 
-    let mut set_args = vec!["--set".to_string(), item.name.clone()];
+    let mut args = vec![
+        "--add".to_string(),
+        "item".to_string(),
+        item.name.clone(),
+        item.geometry.position.unwrap_or(crate::props::item::ComponentPosition::Left).to_string(),
+        "--set".to_string(),
+        item.name.clone(),
+    ];
 
-    set_args.extend_from_slice(
-        &item
-            .to_sketchybar_args()
+    args.extend(
+        item.to_sketchybar_args()
             .iter()
             .map(|p| p.to_string())
             .collect::<Vec<String>>(),
     );
 
-    sb!(set_args)?;
+    sb!(args)?;
 
+    Ok(())
+}
+
+pub fn set_item<T: ToSketchybarArgs>(item_name: &str, item: &T) -> Result<()> {
+    let mut args = vec!["--set".to_string(), item_name.to_string()];
+    args.extend(
+        item.to_sketchybar_args()
+            .iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<String>>(),
+    );
+    sb!(args)?;
+    Ok(())
+}
+
+pub fn set_args<I, S>(item_name: &str, args: I) -> Result<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut cmd_args = vec!["--set".to_string(), item_name.to_string()];
+    cmd_args.extend(args.into_iter().map(|s| s.as_ref().to_string()));
+    sb!(cmd_args)?;
+    Ok(())
+}
+
+pub fn add_event(event: &str) -> Result<()> {
+    sb!("--add", "event", event)?;
+    Ok(())
+}
+
+pub fn subscribe(item_name: &str, event: &str) -> Result<()> {
+    sb!("--subscribe", item_name, event)?;
     Ok(())
 }
 

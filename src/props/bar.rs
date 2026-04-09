@@ -1,4 +1,4 @@
-use crate::props::types::{ARGB, Property, ToSketchybarArgs};
+use crate::props::types::{ARGB, Property, ToSketchybarArgs, SketchyBool};
 use std::fmt::Display;
 
 pub struct Bar {
@@ -77,6 +77,14 @@ impl ToSketchybarArgs for Bar {
             Property::new("blur_radius", &self.blur_radius.to_string()),
             Property::new("padding_left", &self.padding_left.to_string()),
             Property::new("padding_right", &self.padding_right.to_string()),
+            Property::new("notch_width", &self.notch_width.to_string()),
+            Property::new("notch_offset", &self.notch_offset.to_string()),
+            Property::new("display", &self.display.to_string()),
+            Property::new("hidden", &self.hidden.to_string()),
+            Property::new("topmost", &self.topmost.to_string()),
+            Property::new("sticky", &self.sticky.to_on_off()),
+            Property::new("font_smoothing", &self.font_smoothing.to_on_off()),
+            Property::new("shadow", &self.shadow.to_on_off()),
         ]
     }
 }
@@ -121,7 +129,6 @@ impl Display for DisplayMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-
 pub enum HiddenMode {
     Toggle(bool),
     Current,
