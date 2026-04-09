@@ -4,107 +4,106 @@ use crate::props::item::{BackgroundProps, BarItem, ComponentPosition, ScriptType
 use crate::themes::CATPUCCIN_MOCHA;
 use std::env;
 use std::process::Command;
+use media_remote::{NowPlaying, NowPlayingPerl, Controller};
 
 pub fn update() -> Result<()> {
     let name = env::var("NAME").unwrap_or_else(|_| "".to_string());
     let sender = env::var("SENDER").unwrap_or_else(|_| "".to_string());
 
     if sender == "mouse.clicked" {
+        let now_playing = NowPlaying::new();
         match name.as_str() {
             "media.prev" => {
-                let _ = Command::new("osascript")
-                    .args(["-e", "tell application \"Music\" to previous track", "-e", "tell application \"Spotify\" to previous track"])
-                    .status();
+                now_playing.previous();
             }
             "media.next" => {
-                let _ = Command::new("osascript")
-                    .args(["-e", "tell application \"Music\" to next track", "-e", "tell application \"Spotify\" to next track"])
-                    .status();
+                now_playing.next();
             }
             "media.play" => {
-                let _ = Command::new("osascript")
-                    .args(["-e", "tell application \"Music\" to playpause", "-e", "tell application \"Spotify\" to playpause"])
-                    .status();
+                now_playing.toggle();
             }
             _ => {}
         }
+        // Small delay to let system update
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
-    let script = r#"
-        tell application "System Events"
-            set isMusicRunning to (count of (every process whose name is "Music")) > 0
-            set isSpotifyRunning to (count of (every process whose name is "Spotify")) > 0
-        end tell
+    let now_playing = NowPlaying::new();
+    let info_guard = now_playing.get_info();
+    if let Some(info) = &*info_guard {
+        return update_with_info(info);
+    }
 
-        set playerState to "stopped"
-        set trackInfo to ""
+    // Fallback to Perl adapter if needed
+    let perl = NowPlayingPerl::new();
+    let perl_guard = perl.get_info();
+    if let Some(info) = &*perl_guard {
+        return update_with_info(info);
+    }
 
-        if isMusicRunning then
-            tell application "Music"
-                try
-                    set playerState to player state as string
-                    set trackInfo to (get artist of current track) & " - " & (get name of current track)
-                on error
-                    set playerState to "stopped"
-                end try
-            end tell
-        else if isSpotifyRunning then
-            tell application "Spotify"
-                try
-                    set playerState to player state as string
-                    set trackInfo to (get artist of current track) & " - " & (get name of current track)
-                on error
-                    set playerState to "stopped"
-                end try
-            end tell
-        end if
+    // If both fail or no info
+    api::set_args("media", &["drawing=off"])?;
+    Ok(())
+}
 
-        return playerState & "|" & trackInfo
-    "#;
+fn update_with_info(info: &media_remote::NowPlayingInfo) -> Result<()> {
+    let title = info.title.as_deref().unwrap_or_default();
+    let artist = info.artist.as_deref().unwrap_or_default();
+    let is_playing = info.is_playing.unwrap_or(false);
 
-    let output = Command::new("osascript")
-        .args(["-e", script])
-        .output()?;
-
-    let response = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let parts: Vec<&str> = response.split('|').collect();
-    
-    let player_state = parts.get(0).unwrap_or(&"stopped").to_lowercase();
-    let track_info = parts.get(1).unwrap_or(&"");
-
-    if player_state == "stopped" || track_info.is_empty() {
-        api::set_args("media", &[
-            "drawing=on",
-            "icon=󰎆",
-            "label=\"\"",
-            "background.image.drawing=off",
+    if title.is_empty() {
+         api::set_args("media", &[
+            "drawing=off",
         ])?;
+        return Ok(());
+    }
+
+    let track_info = if artist.is_empty() {
+        title.to_string()
     } else {
-        // Update main label
-        let mut display_text = track_info.to_string();
-        if display_text.len() > 30 {
-            display_text.truncate(27);
-            display_text.push_str("...");
-        }
+        format!("{} - {}", artist, title)
+    };
 
-        api::set_args("media", &[
-            "drawing=on",
-            "icon=󰎆",
-            "background.image.drawing=on",
-            &format!("label={}", display_text)
-        ])?;
-
-        // Update play/pause icon
-        let play_icon = if player_state == "playing" { "󰏤" } else { "󰐎" };
-        api::set_args("media.play", &[&format!("icon={}", play_icon)])?;
+    // Handle Artwork
+    let mut has_artwork = false;
+    if let Some(image) = &info.album_cover {
+         if image.save("/tmp/sketchybar_artwork.png").is_ok() {
+             has_artwork = true;
+         }
     }
+
+    // Update main label
+    let mut display_text = track_info.to_string();
+    if display_text.len() > 30 {
+        display_text.truncate(27);
+        display_text.push_str("...");
+    }
+
+    let mut args = vec![
+        "drawing=on".to_string(),
+        "icon=󰎆".to_string(),
+        format!("label={}", display_text),
+    ];
+
+    if has_artwork {
+        args.push("background.image=/tmp/sketchybar_artwork.png".to_string());
+        args.push("background.image.drawing=on".to_string());
+    } else {
+        args.push("background.image.drawing=off".to_string());
+    }
+
+    api::set_args("media", &args.iter().map(|s| s.as_str()).collect::<Vec<&str>>())?;
+
+    // Update play/pause icon in popup
+    let play_icon = if is_playing { "󰏤" } else { "󰐎" };
+    api::set_args("media.play", &[&format!("icon={}", play_icon)])?;
 
     Ok(())
 }
 
 pub fn setup(exe_path: &str) -> Result<()> {
     let mut item = BarItem::new("media".to_string(), ComponentPosition::Center);
-    item.scripting.update_freq = 5;
+    item.scripting.update_freq = 2; // More frequent updates for media
     item.scripting.script = Some(ScriptType::String(format!("{} --update-media", exe_path)));
     item.scripting.click_script = Some(ScriptType::String("sketchybar --set media popup.drawing=toggle".to_string()));
     
@@ -114,7 +113,7 @@ pub fn setup(exe_path: &str) -> Result<()> {
     icon_props.color = Some(CATPUCCIN_MOCHA.green.clone());
     item.icon.props = Some(icon_props);
 
-    let mut image_props = ImageProps::new(ImageType::MediaArtwork);
+    let mut image_props = ImageProps::new(ImageType::Path("/tmp/sketchybar_artwork.png".to_string()));
     image_props.drawing = false;
     image_props.scale = 0.15;
     image_props.corner_radius = 4;
@@ -126,7 +125,6 @@ pub fn setup(exe_path: &str) -> Result<()> {
     bg.image = Some(image_props);
     item.geometry.background = Some(bg);
 
-    // Give some padding to accommodate the thumbnail
     item.geometry.padding_left = Some(10);
     item.geometry.padding_right = Some(10);
 
