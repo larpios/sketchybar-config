@@ -102,7 +102,7 @@ fn update_with_info(info: &media_remote::NowPlayingInfo) -> Result<()> {
 }
 
 pub fn setup(exe_path: &str) -> Result<()> {
-    let mut item = BarItem::new("media".to_string(), ComponentPosition::Center);
+    let mut item = BarItem::new("media".to_string(), ComponentPosition::Left);
     item.scripting.update_freq = 2; // More frequent updates for media
     item.scripting.script = Some(ScriptType::String(format!("{} --update-media", exe_path)));
     item.scripting.click_script = Some(ScriptType::String("sketchybar --set media popup.drawing=toggle".to_string()));
