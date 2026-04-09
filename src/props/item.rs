@@ -672,6 +672,7 @@ pub struct PopupProperties {
     pub background: Option<BackgroundProps>,
     pub drawing: Option<String>, // 'on', 'off', or 'toggle'
     pub blur_radius: Option<u32>,
+    pub horizontal: Option<bool>,
 }
 
 impl ToSketchybarArgs for PopupProperties {
@@ -684,6 +685,10 @@ impl ToSketchybarArgs for PopupProperties {
 
         if let Some(blur_radius) = self.blur_radius {
             args.push(Property::new("popup.blur_radius", &blur_radius.to_string()));
+        }
+
+        if let Some(horizontal) = self.horizontal {
+            args.push(Property::new("popup.horizontal", &horizontal.to_on_off()));
         }
 
         if let Some(background) = &self.background {
@@ -704,6 +709,7 @@ impl Default for PopupProperties {
             background: None,
             drawing: None,
             blur_radius: None,
+            horizontal: None,
         }
     }
 }

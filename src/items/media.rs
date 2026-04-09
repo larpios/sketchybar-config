@@ -30,6 +30,7 @@ pub fn update() -> Result<()> {
 
     let now_playing = NowPlaying::new();
     let info_guard = now_playing.get_info();
+    
     if let Some(info) = &*info_guard {
         return update_with_info(info);
     }
@@ -72,16 +73,15 @@ fn update_with_info(info: &media_remote::NowPlayingInfo) -> Result<()> {
          }
     }
 
-    // Update main label
+    // Update main label (bar item)
     let mut display_text = track_info.to_string();
-    if display_text.len() > 30 {
-        display_text.truncate(27);
+    if display_text.len() > 25 {
+        display_text.truncate(22);
         display_text.push_str("...");
     }
 
     let mut args = vec![
         "drawing=on".to_string(),
-        "icon=󰎆".to_string(),
         format!("label={}", display_text),
     ];
 
@@ -94,7 +94,16 @@ fn update_with_info(info: &media_remote::NowPlayingInfo) -> Result<()> {
 
     api::set_args("media", &args.iter().map(|s| s.as_str()).collect::<Vec<&str>>())?;
 
-    // Update play/pause icon in popup
+    // Update popup items
+    if has_artwork {
+        api::set_args("media.cover", &["background.image=/tmp/sketchybar_artwork.png", "drawing=on"])?;
+    } else {
+        api::set_args("media.cover", &["drawing=off"])?;
+    }
+    
+    api::set_args("media.title", &[&format!("label={}", title)])?;
+    api::set_args("media.artist", &[&format!("label={}", artist)])?;
+    
     let play_icon = if is_playing { "󰏤" } else { "󰐎" };
     api::set_args("media.play", &[&format!("icon={}", play_icon)])?;
 
@@ -103,12 +112,11 @@ fn update_with_info(info: &media_remote::NowPlayingInfo) -> Result<()> {
 
 pub fn setup(exe_path: &str) -> Result<()> {
     let mut item = BarItem::new("media".to_string(), ComponentPosition::Left);
-    item.scripting.update_freq = 2; // More frequent updates for media
+    item.scripting.update_freq = 2;
     item.scripting.script = Some(ScriptType::String(format!("{} --update-media", exe_path)));
     item.scripting.click_script = Some(ScriptType::String("sketchybar --set media popup.drawing=toggle".to_string()));
     
     item.icon.icon = Some("󰎆".to_string());
-    
     let mut icon_props = Text::default();
     icon_props.color = Some(CATPUCCIN_MOCHA.green.clone());
     item.icon.props = Some(icon_props);
@@ -128,55 +136,104 @@ pub fn setup(exe_path: &str) -> Result<()> {
     item.geometry.padding_left = Some(10);
     item.geometry.padding_right = Some(10);
 
-    // Popup
+    // Popup setup
     let mut popup_props = crate::props::item::PopupProperties::default();
     popup_props.align = crate::props::item::PopupAlign::Center;
     let mut popup_bg = BackgroundProps::new();
     popup_bg.color = Some(CATPUCCIN_MOCHA.base.clone());
-    popup_bg.corner_radius = Some(8);
+    popup_bg.corner_radius = Some(12);
     popup_bg.border_width = Some(2);
     popup_bg.border_color = Some(CATPUCCIN_MOCHA.surface1.clone());
     popup_props.background = Some(popup_bg);
     item.popup = Some(popup_props);
 
     api::add_item(&item)?;
-    
-    // Previous button
+
+    // 1. Cover
+    Command::new("sketchybar")
+        .args([
+            "--add", "item", "media.cover", "popup.media",
+            "--set", "media.cover",
+            "background.image.scale=0.6",
+            "background.image.corner_radius=12",
+            "background.image.drawing=on",
+            "background.image.blur_radius=30",
+            "width=240",
+            "height=160",
+            "align=center",
+        ])
+        .status()?;
+
+    // 2. Title and Artist
+    Command::new("sketchybar")
+        .args([
+            "--add", "item", "media.title", "popup.media",
+            "--set", "media.title",
+            "label.font=JetBrainsMono Nerd Font:Bold:16.0",
+            "width=240",
+            "align=center",
+            "label.padding_left=0",
+            "label.padding_right=0",
+        ])
+        .status()?;
+
+    Command::new("sketchybar")
+        .args([
+            "--add", "item", "media.artist", "popup.media",
+            "--set", "media.artist",
+            "label.font=JetBrainsMono Nerd Font:Regular:13.0",
+            "label.color=0xffbac2de",
+            "width=240",
+            "align=center",
+            "label.padding_left=0",
+            "label.padding_right=0",
+        ])
+        .status()?;
+
+    // 3. Horizontal Controls
     Command::new("sketchybar")
         .args([
             "--add", "item", "media.prev", "popup.media",
             "--set", "media.prev",
             "icon=󰒮",
-            "icon.font=JetBrainsMono Nerd Font:Regular:16.0",
-            "icon.padding_left=10",
-            "icon.padding_right=10",
+            "icon.font=JetBrainsMono Nerd Font:Regular:20.0",
+            "width=60",
+            "align=center",
             &format!("click_script={} --update-media", exe_path),
         ])
         .status()?;
 
-    // Play/Pause button
     Command::new("sketchybar")
         .args([
             "--add", "item", "media.play", "popup.media",
             "--set", "media.play",
             "icon=󰐎",
-            "icon.font=JetBrainsMono Nerd Font:Regular:18.0",
-            "icon.padding_left=10",
-            "icon.padding_right=10",
+            "icon.font=JetBrainsMono Nerd Font:Regular:24.0",
+            "width=60",
+            "align=center",
             &format!("click_script={} --update-media", exe_path),
         ])
         .status()?;
 
-    // Next button
     Command::new("sketchybar")
         .args([
             "--add", "item", "media.next", "popup.media",
             "--set", "media.next",
             "icon=󰒭",
-            "icon.font=JetBrainsMono Nerd Font:Regular:16.0",
-            "icon.padding_left=10",
-            "icon.padding_right=10",
+            "icon.font=JetBrainsMono Nerd Font:Regular:20.0",
+            "width=60",
+            "align=center",
             &format!("click_script={} --update-media", exe_path),
+        ])
+        .status()?;
+
+    Command::new("sketchybar")
+        .args([
+            "--add", "bracket", "media.controls", "media.prev", "media.play", "media.next",
+            "--set", "media.controls",
+            "background.drawing=on",
+            "background.color=0x22ffffff",
+            "background.corner_radius=8",
         ])
         .status()?;
 
