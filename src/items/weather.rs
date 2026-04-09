@@ -14,13 +14,9 @@ impl ToSketchybarArgs for Weather {
 
 impl Weather {
     pub fn fetch() -> anyhow::Result<Self> {
-        let output = std::process::Command::new("curl")
-            .args(["-s", "wttr.in/?format=%t"])
-            .output();
-
-        let temp = match output {
-            Ok(output) if output.status.success() => {
-                let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let temp = match ureq::get("https://wttr.in/?format=%t").call() {
+            Ok(response) => {
+                let text = response.into_string().unwrap_or_default().trim().to_string();
                 if text.is_empty() || text.to_lowercase().contains("unknown") || text.to_lowercase().contains("err") {
                     "N/A".to_string()
                 } else {

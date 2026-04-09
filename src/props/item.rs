@@ -326,7 +326,11 @@ impl ToSketchybarArgs for BackgroundProps {
 
         if let Some(image) = &self.image {
             args.extend(image.to_sketchybar_args().iter_mut().map(|p| {
-                p.property = format!("image.{}", p.property);
+                if p.property.is_empty() {
+                    p.property = "image".to_string();
+                } else {
+                    p.property = format!("image.{}", p.property);
+                }
                 p.clone()
             }));
         }
@@ -365,6 +369,7 @@ pub struct ImageProps {
 impl ToSketchybarArgs for ImageProps {
     fn to_sketchybar_args(&self) -> Vec<Property> {
         let mut args = vec![
+            Property::new("", &self.image.to_string()),
             Property::new("drawing", &self.drawing.to_on_off()),
             Property::new("scale", &self.scale.to_string()),
             Property::new("border_color", &self.border_color.to_string()),
@@ -373,7 +378,6 @@ impl ToSketchybarArgs for ImageProps {
             Property::new("padding_left", &self.padding_left.to_string()),
             Property::new("padding_right", &self.padding_right.to_string()),
             Property::new("y_offset", &self.y_offset.to_string()),
-            Property::new("string", &self.image.to_string()),
         ];
 
         if let Some(shadow) = &self.shadow {

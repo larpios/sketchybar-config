@@ -5,9 +5,8 @@ use crate::themes::CATPUCCIN_MOCHA;
 use std::process::Command;
 
 pub fn update() -> Result<()> {
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg("defaults read /Library/Preferences/com.apple.Bluetooth ControllerPowerState")
+    let output = Command::new("defaults")
+        .args(["read", "/Library/Preferences/com.apple.Bluetooth", "ControllerPowerState"])
         .output()?;
         
     let is_on = String::from_utf8_lossy(&output.stdout).trim() == "1";
