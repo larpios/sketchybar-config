@@ -1,7 +1,9 @@
-use anyhow::Result;
 use crate::api;
-use crate::props::item::{BackgroundProps, BarItem, ComponentPosition, ScriptType, Text};
+use crate::props::item::{
+    BackgroundProps, BarItem, ComponentPosition, PopupAlign, PopupProperties, ScriptType, Text,
+};
 use crate::themes::CATPUCCIN_MOCHA;
+use anyhow::Result;
 use std::env;
 use std::process::Command;
 
@@ -21,12 +23,18 @@ pub fn update() -> Result<()> {
     match sender.as_str() {
         "mouse.scrolled.up" => {
             let _ = Command::new("osascript")
-                .args(["-e", "set volume output volume ((output volume of (get volume settings)) + 5)"])
+                .args([
+                    "-e",
+                    "set volume output volume ((output volume of (get volume settings)) + 5)",
+                ])
                 .status();
         }
         "mouse.scrolled.down" => {
             let _ = Command::new("osascript")
-                .args(["-e", "set volume output volume ((output volume of (get volume settings)) - 5)"])
+                .args([
+                    "-e",
+                    "set volume output volume ((output volume of (get volume settings)) - 5)",
+                ])
                 .status();
         }
         "mouse.clicked" => {
@@ -50,9 +58,9 @@ pub fn update() -> Result<()> {
             .output()?;
         String::from_utf8_lossy(&output.stdout).trim().to_string()
     };
-    
+
     let vol: u8 = vol_str.parse().unwrap_or(50);
-    
+
     // Check if muted
     let muted_output = Command::new("osascript")
         .args(["-e", "output muted of (get volume settings)"])
@@ -73,15 +81,13 @@ pub fn update() -> Result<()> {
         }
     };
 
-    api::set_args("volume", &[
-        &format!("icon={}", icon),
-        &format!("label={}%", vol)
-    ])?;
+    api::set_args(
+        "volume",
+        [&format!("icon={}", icon), &format!("label={}%", vol)],
+    )?;
 
     // Keep slider in sync
-    api::set_args("volume.slider", &[
-        &format!("slider.percentage={}", vol)
-    ])?;
+    api::set_args("volume.slider", [&format!("slider.percentage={}", vol)])?;
 
     Ok(())
 }
@@ -91,39 +97,54 @@ pub fn setup(exe_path: &str) -> Result<()> {
 
     let mut item = BarItem::new("volume".to_string(), ComponentPosition::Right);
     item.scripting.script = Some(ScriptType::String(format!("{} --update-volume", exe_path)));
-    
+
     let mut bg = BackgroundProps::new();
     bg.color = Some(CATPUCCIN_MOCHA.surface0.clone());
     bg.drawing = Some(true);
     item.geometry.background = Some(bg);
     item.geometry.scroll_texts = Some(true);
 
-    let mut icon_props = Text::default();
-    icon_props.color = Some(CATPUCCIN_MOCHA.blue.clone());
+    let icon_props = Text {
+        color: Some(CATPUCCIN_MOCHA.blue.clone()),
+        ..Default::default()
+    };
     item.icon.props = Some(icon_props);
 
     // Add popup properties to volume item
-    let mut popup_props = crate::props::item::PopupProperties::default();
-    popup_props.align = crate::props::item::PopupAlign::Center;
-    let mut popup_bg = BackgroundProps::new();
-    popup_bg.color = Some(CATPUCCIN_MOCHA.base.clone());
-    popup_bg.corner_radius = Some(8);
-    popup_bg.border_width = Some(2);
-    popup_bg.border_color = Some(CATPUCCIN_MOCHA.surface1.clone());
-    popup_props.background = Some(popup_bg);
+    let popup_bg = BackgroundProps {
+        color: Some(CATPUCCIN_MOCHA.base.clone()),
+        corner_radius: Some(8),
+        border_width: Some(2),
+        border_color: Some(CATPUCCIN_MOCHA.surface1.clone()),
+        ..Default::default()
+    };
+    let popup_props = PopupProperties {
+        align: PopupAlign::Center,
+        background: Some(popup_bg),
+        ..Default::default()
+    };
     item.popup = Some(popup_props);
 
     api::add_item(&item)?;
-    api::subscribe("volume", "volume_change")?;
-    api::subscribe("volume", "mouse.scrolled.up")?;
-    api::subscribe("volume", "mouse.scrolled.down")?;
-    api::subscribe("volume", "mouse.clicked")?;
-    
+    api::subscribe(
+        &item.name,
+        &[
+            "volume_change",
+            "mouse.scrolled.up",
+            "mouse.scrolled.down",
+            "mouse.clicked",
+        ],
+    )?;
+
     // Add slider to popup
     Command::new("sketchybar")
         .args([
-            "--add", "slider", "volume.slider", "popup.volume",
-            "--set", "volume.slider",
+            "--add",
+            "slider",
+            "volume.slider",
+            "popup.volume",
+            "--set",
+            "volume.slider",
             "slider.highlight_color=0xff8aadf4",
             "slider.background.height=5",
             "slider.background.corner_radius=3",

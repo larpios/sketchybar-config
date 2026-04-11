@@ -5,7 +5,9 @@ use sketchybarrc::props::bar::BarPosition;
 use sketchybarrc::themes::CATPUCCIN_MOCHA;
 use std::env;
 
-use sketchybarrc::items::{apple, battery, bluetooth, clock, cpu, media, network, volume, weather, workspaces};
+use sketchybarrc::items::{
+    apple, battery, bluetooth, clock, cpu, media, network, volume, weather, workspaces,
+};
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -30,8 +32,8 @@ fn main() -> Result<()> {
                 api::set_item("clock", &clock_data)?;
 
                 // Update popups
-                api::set_args("clock.date", &[&format!("label={}", clock_data.full_date)])?;
-                api::set_args("clock.utc", &[&format!("label={}", clock_data.utc_time)])?;
+                api::set_args("clock.date", [&format!("label={}", clock_data.full_date)])?;
+                api::set_args("clock.utc", [&format!("label={}", clock_data.utc_time)])?;
 
                 return Ok(());
             }
@@ -45,10 +47,10 @@ fn main() -> Result<()> {
                 api::set_item("network", &network_data)?;
 
                 // Set network popup info
-                api::set_args("network.ip", &[&format!("label={}", network_data.ip)])?;
+                api::set_args("network.ip", [&format!("label={}", network_data.ip)])?;
                 api::set_args(
                     "network.device",
-                    &[&format!("label={}", network_data.device)],
+                    [&format!("label={}", network_data.device)],
                 )?;
                 return Ok(());
             }
@@ -66,8 +68,12 @@ fn main() -> Result<()> {
     }
 
     // Clear bar and items
-    let _ = std::process::Command::new("sketchybar").args(["--bar", "hidden=off"]).status();
-    let _ = std::process::Command::new("sketchybar").args(["--remove", "/.*/"]).status();
+    let _ = std::process::Command::new("sketchybar")
+        .args(["--bar", "hidden=off"])
+        .status();
+    let _ = std::process::Command::new("sketchybar")
+        .args(["--remove", "/.*/"])
+        .status();
 
     let bar = Bar {
         color: CATPUCCIN_MOCHA.base.clone(),
@@ -87,10 +93,10 @@ fn main() -> Result<()> {
     api::add_bar(&bar)?;
 
     // Set defaults from nushell config
-    api::set_default(&[
-        &format!("icon.font=JetBrainsMono Nerd Font:Regular:14.0"),
+    api::set_default([
+        "icon.font=JetBrainsMono Nerd Font:Regular:14.0",
         &format!("icon.color={}", CATPUCCIN_MOCHA.text),
-        &format!("label.font=JetBrainsMono Nerd Font:Regular:12.0"),
+        "label.font=JetBrainsMono Nerd Font:Regular:12.0",
         &format!("label.color={}", CATPUCCIN_MOCHA.text),
         "padding_left=4",
         "padding_right=4",
@@ -108,7 +114,7 @@ fn main() -> Result<()> {
     let exe_path = env::current_exe()?.to_string_lossy().to_string();
 
     // Left items (added left to right)
-    apple::setup(&exe_path)?;
+    apple::setup()?;
     workspaces::setup(&exe_path)?;
 
     // Center items

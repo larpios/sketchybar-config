@@ -63,7 +63,10 @@ pub fn add_item(item: &BarItem) -> Result<()> {
         "--add".to_string(),
         "item".to_string(),
         item.name.clone(),
-        item.geometry.position.unwrap_or(crate::props::item::ComponentPosition::Left).to_string(),
+        item.geometry
+            .position
+            .unwrap_or(crate::props::item::ComponentPosition::Left)
+            .to_string(),
         "--set".to_string(),
         item.name.clone(),
     ];
@@ -108,8 +111,14 @@ pub fn add_event(event: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn subscribe(item_name: &str, event: &str) -> Result<()> {
-    sb!("--subscribe", item_name, event)?;
+pub fn subscribe<I, S>(item: &str, events: I) -> Result<()> 
+where 
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut cmd_args = vec!["--subscribe".to_string(), item.to_string()];
+    cmd_args.extend(events.into_iter().map(|s| s.as_ref().to_string()));
+    sb!(cmd_args)?;
     Ok(())
 }
 

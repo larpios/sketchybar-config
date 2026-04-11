@@ -2,7 +2,7 @@ use crate::api;
 use crate::props::item::{BackgroundProps, BarItem, ComponentPosition, ScriptType, Text};
 use crate::props::types::Font;
 use crate::themes::CATPUCCIN_MOCHA;
-pub fn setup(_exe_path: &str) -> anyhow::Result<()> {
+pub fn setup() -> anyhow::Result<()> {
     let mut apple_item = BarItem::new("apple.logo".to_string(), ComponentPosition::Left);
     apple_item.icon.icon = Some("".to_string());
 
