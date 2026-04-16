@@ -1,4 +1,5 @@
 use crate::property;
+use crate::props::item::{Icon, Text};
 use crate::props::types::{Property, ToSketchybarArgs};
 use sysinfo::System;
 
@@ -30,14 +31,18 @@ impl Cpu {
     }
 
     pub fn setup(exe_path: &str) -> anyhow::Result<()> {
-        use crate::props::item::{BarItem, BackgroundProps, ComponentPosition, ScriptType};
-        use crate::themes::CATPUCCIN_MOCHA;
         use crate::api;
+        use crate::props::item::{BackgroundProps, BarItem, ComponentPosition, ScriptType};
+        use crate::themes::CATPUCCIN_MOCHA;
 
         let mut item = BarItem::new("cpu".to_string(), ComponentPosition::Right);
         item.scripting.update_freq = 2;
         item.scripting.script = Some(ScriptType::String(format!("{} --update-cpu", exe_path)));
         item.icon.icon = Some("".to_string());
+        item.icon.props = Some(Text {
+            color: Some(CATPUCCIN_MOCHA.red.clone()),
+            ..Default::default()
+        });
         let mut bg = BackgroundProps::new();
         bg.color = Some(CATPUCCIN_MOCHA.surface0.clone());
         bg.drawing = Some(true);
