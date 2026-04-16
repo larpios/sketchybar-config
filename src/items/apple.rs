@@ -22,7 +22,7 @@ pub fn setup() -> anyhow::Result<()> {
     apple_item.geometry.padding_right = Some(15);
 
     let mut apple_bg = BackgroundProps::new();
-    apple_bg.color = Some(crate::props::types::ARGB::new(0, 0, 0, 0)); // Transparent
+    apple_bg.color = Some(crate::props::types::Argb::transparent());
     apple_bg.drawing = Some(true);
     apple_item.geometry.background = Some(apple_bg);
 

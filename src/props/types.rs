@@ -46,26 +46,40 @@ impl SketchyBool for bool {
 }
 
 #[derive(Debug, Clone)]
-pub struct ARGB {
+pub struct Argb {
     pub a: u8,
     pub r: u8,
     pub g: u8,
     pub b: u8,
 }
 
-impl Default for ARGB {
+impl Default for Argb {
     fn default() -> Self {
-        Self::new(0, 0, 0, 0)
+        Self::transparent()
     }
 }
 
-impl ARGB {
-    pub fn new(a: u8, r: u8, g: u8, b: u8) -> Self {
-        Self { a, r, g, b }
+impl Argb {
+    pub fn transparent() -> Self {
+        Self {
+            a: 0,
+            r: 0,
+            g: 0,
+            b: 0,
+        }
+    }
+
+    pub fn black() -> Self {
+        Self {
+            a: 255,
+            r: 0,
+            g: 0,
+            b: 0,
+        }
     }
 }
 
-impl FromStr for ARGB {
+impl FromStr for Argb {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -77,11 +91,11 @@ impl FromStr for ARGB {
         let g = u8::from_str_radix(&s[6..8], 16).map_err(|e| e.to_string())?;
         let b = u8::from_str_radix(&s[8..10], 16).map_err(|e| e.to_string())?;
 
-        Ok(ARGB::new(a, r, g, b))
+        Ok(Argb { a, r, g, b })
     }
 }
 
-impl Display for ARGB {
+impl Display for Argb {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,

@@ -1,11 +1,11 @@
-use crate::props::types::{ARGB, Property, ToSketchybarArgs, SketchyBool};
+use crate::props::types::{Argb, Property, ToSketchybarArgs, SketchyBool};
 use std::fmt::Display;
 
 pub struct Bar {
     /// Color of the bar
-    pub color: ARGB,
+    pub color: Argb,
     /// Color of the bars border
-    pub border_color: ARGB,
+    pub border_color: Argb,
     pub position: BarPosition,
     pub height: i32,
     pub notch_display_height: i32,
@@ -29,8 +29,8 @@ pub struct Bar {
 impl Bar {
     pub fn new() -> Self {
         Self {
-            color: ARGB::new(68, 0, 0, 0),
-            border_color: ARGB::new(255, 255, 0, 0),
+            color: Argb {a: 68,r: 0,g: 0,b: 0 },
+            border_color: Argb { a:255, r:255, g: 0, b: 0 },
             position: BarPosition::Top,
             height: 25,
             notch_display_height: 0,

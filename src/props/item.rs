@@ -1,4 +1,4 @@
-use crate::props::types::{ARGB, Font, Property, ToSketchybarArgs, SketchyBool};
+use crate::props::types::{Argb, Font, Property, ToSketchybarArgs, SketchyBool};
 use std::fmt::Display;
 
 #[derive(Debug, Clone)]
@@ -196,8 +196,8 @@ pub struct Text {
     /// If the text is rendered
     pub drawing: Option<bool>,
     pub highlight: Option<bool>,
-    pub color: Option<ARGB>,
-    pub highlight_color: Option<ARGB>,
+    pub color: Option<Argb>,
+    pub highlight_color: Option<Argb>,
     pub padding_left: Option<u32>,
     pub padding_right: Option<u32>,
     pub y_offset: Option<i32>,
@@ -272,8 +272,8 @@ impl ToSketchybarArgs for Text {
 #[derive(Debug, Clone, Default)]
 pub struct BackgroundProps {
     pub drawing: Option<bool>,
-    pub color: Option<ARGB>,
-    pub border_color: Option<ARGB>,
+    pub color: Option<Argb>,
+    pub border_color: Option<Argb>,
     pub border_width: Option<u32>,
     pub height: Option<u32>,
     pub corner_radius: Option<u32>,
@@ -356,7 +356,7 @@ impl BackgroundProps {
 pub struct ImageProps {
     pub drawing: bool,
     pub scale: f32,
-    pub border_color: ARGB,
+    pub border_color: Argb,
     pub border_width: u32,
     pub corner_radius: u32,
     pub padding_left: i32,
@@ -396,7 +396,7 @@ impl ImageProps {
         Self {
             drawing: false,
             scale: 1.0,
-            border_color: ARGB::new(0, 0, 0, 0),
+            border_color: Argb::transparent(),
             border_width: 0,
             corner_radius: 0,
             padding_left: 0,
@@ -411,7 +411,7 @@ impl ImageProps {
 #[derive(Debug, Clone)]
 pub struct ShadowProperties {
     pub drawing: bool,
-    pub color: ARGB,
+    pub color: Argb,
     pub angle: u32,
     pub distance: u32,
 }
@@ -431,7 +431,7 @@ impl Default for ShadowProperties {
     fn default() -> Self {
         Self {
             drawing: false,
-            color: ARGB::new(255, 0, 0, 0),
+            color: Argb::black(),
             angle: 30,
             distance: 5,
         }

@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use crate::props::types::ARGB;
+use crate::props::types::Argb;
 
 macro_rules! theme {
     ($name:ident, $theme:expr) => {
@@ -8,34 +8,34 @@ macro_rules! theme {
     };
 }
 pub struct Theme {
-    pub rosewater: ARGB,
-    pub flamingo: ARGB,
-    pub pink: ARGB,
-    pub mauve: ARGB,
-    pub red: ARGB,
-    pub maroon: ARGB,
-    pub peach: ARGB,
-    pub yellow: ARGB,
-    pub green: ARGB,
-    pub teal: ARGB,
-    pub sky: ARGB,
-    pub sapphire: ARGB,
-    pub blue: ARGB,
-    pub lavender: ARGB,
-    pub text: ARGB,
-    pub subtext1: ARGB,
-    pub subtext0: ARGB,
-    pub overlay2: ARGB,
-    pub overlay1: ARGB,
-    pub overlay0: ARGB,
-    pub surface2: ARGB,
-    pub surface1: ARGB,
-    pub surface0: ARGB,
-    pub base: ARGB,
-    pub mantle: ARGB,
-    pub crust: ARGB,
-    pub transparent: ARGB,
-    pub bg_opaque: ARGB,
+    pub rosewater: Argb,
+    pub flamingo: Argb,
+    pub pink: Argb,
+    pub mauve: Argb,
+    pub red: Argb,
+    pub maroon: Argb,
+    pub peach: Argb,
+    pub yellow: Argb,
+    pub green: Argb,
+    pub teal: Argb,
+    pub sky: Argb,
+    pub sapphire: Argb,
+    pub blue: Argb,
+    pub lavender: Argb,
+    pub text: Argb,
+    pub subtext1: Argb,
+    pub subtext0: Argb,
+    pub overlay2: Argb,
+    pub overlay1: Argb,
+    pub overlay0: Argb,
+    pub surface2: Argb,
+    pub surface1: Argb,
+    pub surface0: Argb,
+    pub base: Argb,
+    pub mantle: Argb,
+    pub crust: Argb,
+    pub transparent: Argb,
+    pub bg_opaque: Argb,
 }
 
 theme!(
