@@ -41,45 +41,54 @@ impl Clock {
         use crate::themes::CATPUCCIN_MOCHA;
 
         let mut item = BarItem::new("clock".to_string(), ComponentPosition::Right);
-        item.scripting.update_freq = 10;
-        item.scripting.script = Some(ScriptType::String(format!("{} --update-clock", exe_path)));
-        item.icon.icon = Some("󰥔".to_string());
-        
-        let mut icon_props = Text::default();
-        icon_props.color = Some(CATPUCCIN_MOCHA.blue.clone());
-        item.icon.props = Some(icon_props);
+        item.props.scripting.update_freq = 10;
+        item.props.scripting.script =
+            Some(ScriptType::String(format!("{} --update-clock", exe_path)));
+        item.props.icon.icon = Some("󰥔".to_string());
 
-        let mut bg = BackgroundProps::new();
-        bg.color = Some(CATPUCCIN_MOCHA.surface0.clone());
-        bg.drawing = Some(true);
-        item.geometry.background = Some(bg);
+        let icon_props = Text {
+            color: Some(CATPUCCIN_MOCHA.blue.clone()),
+            ..Default::default()
+        };
+        item.props.icon.props = Some(icon_props);
 
-        let mut popup_props = crate::props::item::PopupProperties::default();
-        popup_props.align = crate::props::item::PopupAlign::Center;
-        let mut popup_bg = BackgroundProps::new();
-        popup_bg.color = Some(CATPUCCIN_MOCHA.base.clone());
-        popup_bg.corner_radius = Some(8);
-        popup_bg.border_width = Some(2);
-        popup_bg.border_color = Some(CATPUCCIN_MOCHA.surface1.clone());
-        popup_props.background = Some(popup_bg);
-        item.popup = Some(popup_props);
-        item.scripting.click_script = Some(ScriptType::String(
+        let bg = BackgroundProps {
+            color: Some(CATPUCCIN_MOCHA.surface0.clone()),
+            drawing: Some(true),
+            ..Default::default()
+        };
+        item.props.geometry.background = Some(bg);
+
+        let popup_bg = BackgroundProps {
+            color: Some(CATPUCCIN_MOCHA.base.clone()),
+            corner_radius: Some(8),
+            border_width: Some(2),
+            border_color: Some(CATPUCCIN_MOCHA.surface1.clone()),
+            ..Default::default()
+        };
+        let popup_props = crate::props::item::PopupProperties {
+            align: crate::props::item::PopupAlign::Center,
+            background: Some(popup_bg),
+            ..Default::default()
+        };
+        item.props.popup = Some(popup_props);
+        item.props.scripting.click_script = Some(ScriptType::String(
             "sketchybar --set clock popup.drawing=toggle".to_string(),
         ));
         api::add_item(&item)?;
 
         // Add Clock Popups
         let mut clock_date_item = BarItem::new("clock.date".to_string(), ComponentPosition::Right);
-        clock_date_item.icon.icon = Some("Date:".to_string());
-        clock_date_item.label.label = Some("Loading...".to_string());
+        clock_date_item.props.icon.icon = Some("Date:".to_string());
+        clock_date_item.props.label.label = Some("Loading...".to_string());
         api::add_item(&clock_date_item)?;
-        api::set_args("clock.date", &["position=popup.clock"])?;
+        api::set_args("clock.date", ["position=popup.clock"])?;
 
         let mut clock_utc_item = BarItem::new("clock.utc".to_string(), ComponentPosition::Right);
-        clock_utc_item.icon.icon = Some("UTC:".to_string());
-        clock_utc_item.label.label = Some("Loading...".to_string());
+        clock_utc_item.props.icon.icon = Some("UTC:".to_string());
+        clock_utc_item.props.label.label = Some("Loading...".to_string());
         api::add_item(&clock_utc_item)?;
-        api::set_args("clock.utc", &["position=popup.clock"])?;
+        api::set_args("clock.utc", ["position=popup.clock"])?;
 
         Ok(())
     }

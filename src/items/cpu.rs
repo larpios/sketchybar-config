@@ -1,5 +1,5 @@
 use crate::property;
-use crate::props::item::{Icon, Text};
+use crate::props::item::Text;
 use crate::props::types::{Property, ToSketchybarArgs};
 use sysinfo::System;
 
@@ -36,17 +36,20 @@ impl Cpu {
         use crate::themes::CATPUCCIN_MOCHA;
 
         let mut item = BarItem::new("cpu".to_string(), ComponentPosition::Right);
-        item.scripting.update_freq = 2;
-        item.scripting.script = Some(ScriptType::String(format!("{} --update-cpu", exe_path)));
-        item.icon.icon = Some("".to_string());
-        item.icon.props = Some(Text {
+        item.props.scripting.update_freq = 2;
+        item.props.scripting.script =
+            Some(ScriptType::String(format!("{} --update-cpu", exe_path)));
+        item.props.icon.icon = Some("".to_string());
+        item.props.icon.props = Some(Text {
             color: Some(CATPUCCIN_MOCHA.red.clone()),
             ..Default::default()
         });
-        let mut bg = BackgroundProps::new();
-        bg.color = Some(CATPUCCIN_MOCHA.surface0.clone());
-        bg.drawing = Some(true);
-        item.geometry.background = Some(bg);
+        let bg = BackgroundProps {
+            color: Some(CATPUCCIN_MOCHA.surface0.clone()),
+            drawing: Some(true),
+            ..Default::default()
+        };
+        item.props.geometry.background = Some(bg);
         api::add_item(&item)?;
         Ok(())
     }

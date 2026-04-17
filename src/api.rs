@@ -3,6 +3,7 @@ use std::process::Command;
 use crate::props::{item::BarItem, types::ToSketchybarArgs};
 use anyhow::{Ok, Result};
 
+#[macro_export]
 macro_rules! sb {
     ($args:ident) => {
         {
@@ -63,12 +64,46 @@ pub fn add_item(item: &BarItem) -> Result<()> {
         "--add".to_string(),
         "item".to_string(),
         item.name.clone(),
-        item.geometry
+        item.props
+            .geometry
             .position
             .unwrap_or(crate::props::item::ComponentPosition::Left)
             .to_string(),
         "--set".to_string(),
         item.name.clone(),
+    ];
+
+    args.extend(
+        item.to_sketchybar_args()
+            .iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<String>>(),
+    );
+
+    sb!(args)?;
+
+    Ok(())
+}
+
+pub fn add_special_item<T: ToSketchybarArgs>(
+    kind: &str,
+    name: &str,
+    parent_or_pos: &str,
+    item: &T,
+) -> Result<()> {
+    // Remove if exists (silently)
+    let _ = Command::new("sketchybar")
+        .arg("--remove")
+        .arg(name)
+        .output();
+
+    let mut args = vec![
+        "--add".to_string(),
+        kind.to_string(),
+        name.to_string(),
+        parent_or_pos.to_string(),
+        "--set".to_string(),
+        name.to_string(),
     ];
 
     args.extend(
@@ -111,8 +146,8 @@ pub fn add_event(event: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn subscribe<I, S>(item: &str, events: I) -> Result<()> 
-where 
+pub fn subscribe<I, S>(item: &str, events: I) -> Result<()>
+where
     I: IntoIterator<Item = S>,
     S: AsRef<str>,
 {

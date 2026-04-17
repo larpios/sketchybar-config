@@ -1,7 +1,7 @@
 use crate::property;
 use crate::props::types::{Property, ToSketchybarArgs};
-use std::process::Command;
 use local_ip_address::local_ip;
+use std::process::Command;
 
 #[derive(Debug, Clone)]
 pub struct Network {
@@ -36,9 +36,7 @@ impl ToSketchybarArgs for Network {
 impl Network {
     pub fn fetch() -> anyhow::Result<Self> {
         // Use scutil to find the primary interface - much faster and more reliable on macOS
-        let scutil_output = Command::new("scutil")
-            .arg("--nwi")
-            .output()?;
+        let scutil_output = Command::new("scutil").arg("--nwi").output()?;
 
         let stdout = String::from_utf8_lossy(&scutil_output.stdout);
         let mut device = String::new();
@@ -49,17 +47,23 @@ impl Network {
         for line in stdout.lines() {
             let trimmed = line.trim();
             if trimmed.starts_with("Network interfaces:") {
-                device = trimmed.replace("Network interfaces:", "").trim().split(' ').next().unwrap_or("").to_string();
+                device = trimmed
+                    .replace("Network interfaces:", "")
+                    .trim()
+                    .split(' ')
+                    .next()
+                    .unwrap_or("")
+                    .to_string();
             } else if trimmed.contains("address") && ip.is_empty() {
                 ip = trimmed.split(':').nth(1).unwrap_or("").trim().to_string();
             }
         }
 
         // Fallback for IP if scutil didn't give it or if we want to be sure
-        if ip.is_empty() {
-             if let Ok(local_ip) = local_ip() {
-                 ip = local_ip.to_string();
-             }
+        if ip.is_empty()
+            && let Ok(local_ip) = local_ip()
+        {
+            ip = local_ip.to_string();
         }
 
         if device.is_empty() {
@@ -78,16 +82,18 @@ impl Network {
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .spawn()?;
-        
+
         {
             use std::io::Write;
             if let Some(mut stdin) = child.stdin.take() {
-                stdin.write_all(format!("show State:/Network/Interface/{}/AirPort\n", device).as_bytes())?;
+                stdin.write_all(
+                    format!("show State:/Network/Interface/{}/AirPort\n", device).as_bytes(),
+                )?;
             }
         }
-        
+
         let airport_output = child.wait_with_output()?;
-        
+
         let airport_stdout = String::from_utf8_lossy(&airport_output.stdout);
         let mut ssid = String::new();
         let mut is_wifi = false;
@@ -109,11 +115,12 @@ impl Network {
                 // Find if the port for this device is Wi-Fi
                 let lines: Vec<&str> = hw_stdout.lines().collect();
                 for i in 0..lines.len() {
-                    if lines[i].contains(&format!("Device: {}", device)) && i > 0 {
-                        if lines[i-1].contains("Wi-Fi") {
-                            is_wifi = true;
-                            break;
-                        }
+                    if lines[i].contains(&format!("Device: {}", device))
+                        && i > 0
+                        && lines[i - 1].contains("Wi-Fi")
+                    {
+                        is_wifi = true;
+                        break;
                     }
                 }
             }
@@ -129,17 +136,20 @@ impl Network {
     }
 
     pub fn setup(exe_path: &str) -> anyhow::Result<()> {
-        use crate::props::item::{BarItem, BackgroundProps, ComponentPosition, ScriptType};
-        use crate::themes::CATPUCCIN_MOCHA;
         use crate::api;
+        use crate::props::item::{BackgroundProps, BarItem, ComponentPosition, ScriptType};
+        use crate::themes::CATPUCCIN_MOCHA;
 
         let mut item = BarItem::new("network".to_string(), ComponentPosition::Right);
-        item.scripting.update_freq = 10;
-        item.scripting.script = Some(ScriptType::String(format!("{} --update-network", exe_path)));
-        let mut bg = BackgroundProps::new();
-        bg.color = Some(CATPUCCIN_MOCHA.surface0.clone());
-        bg.drawing = Some(true);
-        item.geometry.background = Some(bg);
+        item.props.scripting.update_freq = 10;
+        item.props.scripting.script =
+            Some(ScriptType::String(format!("{} --update-network", exe_path)));
+        let bg = BackgroundProps {
+            color: Some(CATPUCCIN_MOCHA.surface0.clone()),
+            drawing: Some(true),
+            ..Default::default()
+        };
+        item.props.geometry.background = Some(bg);
         api::add_item(&item)?;
         Ok(())
     }

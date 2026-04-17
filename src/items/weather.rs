@@ -16,8 +16,15 @@ impl Weather {
     pub fn fetch() -> anyhow::Result<Self> {
         let temp = match ureq::get("https://wttr.in/?format=%t").call() {
             Ok(response) => {
-                let text = response.into_string().unwrap_or_default().trim().to_string();
-                if text.is_empty() || text.to_lowercase().contains("unknown") || text.to_lowercase().contains("err") {
+                let text = response
+                    .into_string()
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string();
+                if text.is_empty()
+                    || text.to_lowercase().contains("unknown")
+                    || text.to_lowercase().contains("err")
+                {
                     "N/A".to_string()
                 } else {
                     text
@@ -35,20 +42,26 @@ impl Weather {
         use crate::themes::CATPUCCIN_MOCHA;
 
         let mut item = BarItem::new("weather".to_string(), ComponentPosition::Right);
-        item.scripting.update_freq = 1800;
-        item.scripting.script = Some(ScriptType::String(format!("{} --update-weather", exe_path)));
-        item.scripting.click_script = Some(ScriptType::String("open 'https://weather.com'".to_string()));
+        item.props.scripting.update_freq = 1800;
+        item.props.scripting.script =
+            Some(ScriptType::String(format!("{} --update-weather", exe_path)));
+        item.props.scripting.click_script =
+            Some(ScriptType::String("open 'https://weather.com'".to_string()));
 
-        item.icon.icon = Some("".to_string());
-        
-        let mut icon_props = Text::default();
-        icon_props.color = Some(CATPUCCIN_MOCHA.yellow.clone());
-        item.icon.props = Some(icon_props);
+        item.props.icon.icon = Some("".to_string());
 
-        let mut bg = BackgroundProps::new();
-        bg.color = Some(CATPUCCIN_MOCHA.surface0.clone());
-        bg.drawing = Some(true);
-        item.geometry.background = Some(bg);
+        let icon_props = Text {
+            color: Some(CATPUCCIN_MOCHA.yellow.clone()),
+            ..Default::default()
+        };
+        item.props.icon.props = Some(icon_props);
+
+        let bg = BackgroundProps {
+            color: Some(CATPUCCIN_MOCHA.surface0.clone()),
+            drawing: Some(true),
+            ..Default::default()
+        };
+        item.props.geometry.background = Some(bg);
 
         api::add_item(&item)?;
         Ok(())

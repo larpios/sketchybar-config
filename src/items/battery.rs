@@ -63,17 +63,20 @@ impl Battery {
     }
 
     pub fn setup(exe_path: &str) -> anyhow::Result<()> {
-        use crate::props::item::{BarItem, BackgroundProps, ComponentPosition, ScriptType};
-        use crate::themes::CATPUCCIN_MOCHA;
         use crate::api;
+        use crate::props::item::{BackgroundProps, BarItem, ComponentPosition, ScriptType};
+        use crate::themes::CATPUCCIN_MOCHA;
 
         let mut item = BarItem::new("battery".to_string(), ComponentPosition::Right);
-        item.scripting.update_freq = 60;
-        item.scripting.script = Some(ScriptType::String(format!("{} --update-battery", exe_path)));
-        let mut bg = BackgroundProps::new();
-        bg.color = Some(CATPUCCIN_MOCHA.surface0.clone());
-        bg.drawing = Some(true);
-        item.geometry.background = Some(bg);
+        item.props.scripting.update_freq = 60;
+        item.props.scripting.script =
+            Some(ScriptType::String(format!("{} --update-battery", exe_path)));
+        let bg = BackgroundProps {
+            color: Some(CATPUCCIN_MOCHA.surface0.clone()),
+            drawing: Some(true),
+            ..Default::default()
+        };
+        item.props.geometry.background = Some(bg);
         api::add_item(&item)?;
         Ok(())
     }

@@ -122,12 +122,12 @@ fn main() -> Result<()> {
 
     // Right items (first added is rightmost, so add Clock first, then Volume, etc.)
     clock::Clock::setup(&exe_path)?;
+    weather::Weather::setup(&exe_path)?;
     volume::setup(&exe_path)?;
     battery::Battery::setup(&exe_path)?;
     network::Network::setup(&exe_path)?;
     bluetooth::setup(&exe_path)?;
     cpu::Cpu::setup(&exe_path)?;
-    weather::Weather::setup(&exe_path)?;
 
     api::update()?;
     api::trigger_evt("workspace_change")?;

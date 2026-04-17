@@ -1,6 +1,8 @@
 use crate::api;
+use crate::props::components::Slider;
 use crate::props::item::{
-    BackgroundProps, BarItem, ComponentPosition, PopupAlign, PopupProperties, ScriptType, Text,
+    BackgroundProps, BarItem, ComponentPosition, ItemProps, PopupAlign, PopupProperties,
+    ScriptType, Scripting, Text,
 };
 use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::Result;
@@ -12,9 +14,38 @@ pub fn update() -> Result<()> {
     let name = env::var("NAME").unwrap_or_default();
 
     if name == "volume.slider" {
-        if let Ok(info) = env::var("INFO") {
+        // Get the slider percentage from SLIDER_PERCENTAGE or fetch current volume
+        let slider_value = env::var("SLIDER_PERCENTAGE").unwrap_or_else(|_| {
+            // Fallback: query sketchybar for current slider value
+            let output = Command::new("sketchybar")
+                .args(["--query", "volume.slider"])
+                .output()
+                .ok();
+            if let Some(output) = output {
+                String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .find_map(|line| {
+                        if line.contains("\"slider.percentage\"") {
+                            line.split(":")
+                                .nth(1)?
+                                .trim()
+                                .trim_end_matches(",")
+                                .parse::<f32>()
+                                .ok()
+                                .map(|v| (v as u8).to_string())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| "50".to_string())
+            } else {
+                "50".to_string()
+            }
+        });
+
+        if let Ok(vol) = slider_value.parse::<u8>() {
             let _ = Command::new("osascript")
-                .args(["-e", &format!("set volume output volume {}", info)])
+                .args(["-e", &format!("set volume output volume {}", vol)])
                 .status();
         }
         return Ok(());
@@ -96,19 +127,21 @@ pub fn setup(exe_path: &str) -> Result<()> {
     api::add_event("volume_change")?;
 
     let mut item = BarItem::new("volume".to_string(), ComponentPosition::Right);
-    item.scripting.script = Some(ScriptType::String(format!("{} --update-volume", exe_path)));
+    item.props.scripting.script = Some(ScriptType::String(format!("{} --update-volume", exe_path)));
 
-    let mut bg = BackgroundProps::new();
-    bg.color = Some(CATPUCCIN_MOCHA.surface0.clone());
-    bg.drawing = Some(true);
-    item.geometry.background = Some(bg);
-    item.geometry.scroll_texts = Some(true);
+    let bg = BackgroundProps {
+        color: Some(CATPUCCIN_MOCHA.surface0.clone()),
+        drawing: Some(true),
+        ..Default::default()
+    };
+    item.props.geometry.background = Some(bg);
+    item.props.geometry.scroll_texts = Some(true);
 
     let icon_props = Text {
         color: Some(CATPUCCIN_MOCHA.blue.clone()),
         ..Default::default()
     };
-    item.icon.props = Some(icon_props);
+    item.props.icon.props = Some(icon_props);
 
     // Add popup properties to volume item
     let popup_bg = BackgroundProps {
@@ -123,12 +156,12 @@ pub fn setup(exe_path: &str) -> Result<()> {
         background: Some(popup_bg),
         ..Default::default()
     };
-    item.popup = Some(popup_props);
+    item.props.popup = Some(popup_props);
 
     api::add_item(&item)?;
     api::subscribe(
         &item.name,
-        &[
+        [
             "volume_change",
             "mouse.scrolled.up",
             "mouse.scrolled.down",
@@ -136,28 +169,40 @@ pub fn setup(exe_path: &str) -> Result<()> {
         ],
     )?;
 
-    // Add slider to popup
-    Command::new("sketchybar")
-        .args([
-            "--add",
-            "slider",
-            "volume.slider",
-            "popup.volume",
-            "--set",
-            "volume.slider",
-            "slider.highlight_color=0xff8aadf4",
-            "slider.background.height=5",
-            "slider.background.corner_radius=3",
-            "slider.background.color=0xff313244",
-            "slider.knob=",
-            "slider.knob.drawing=on",
-            "slider.knob.font=JetBrainsMono Nerd Font:Regular:14.0",
-            "padding_left=15",
-            "padding_right=15",
-            "width=100",
-            &format!("script={} --update-volume", exe_path),
-        ])
-        .status()?;
+    // Setup Slider
+    let slider = Slider {
+        width: Some(100),
+        highlight_color: Some(CATPUCCIN_MOCHA.blue.clone()),
+        knob: Some("".to_string()),
+        knob_props: Some(Text {
+            color: Some(CATPUCCIN_MOCHA.blue.clone()),
+            font: Some(crate::props::types::Font {
+                family: "JetBrainsMono Nerd Font".to_string(),
+                size: 14.0,
+                type_: crate::props::types::FontType::Regular,
+            }),
+            ..Default::default()
+        }),
+        background: Some(BackgroundProps {
+            color: Some(CATPUCCIN_MOCHA.surface0.clone()),
+            height: Some(5),
+            corner_radius: Some(3),
+            padding_left: Some(15),
+            padding_right: Some(15),
+            ..Default::default()
+        }),
+        item: Some(ItemProps {
+            scripting: Scripting {
+                script: Some(ScriptType::String(format!("{} --update-volume", exe_path))),
+                ..Default::default()
+            },
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    api::add_special_item("slider", "volume.slider", "popup.volume", &slider)?;
+    api::subscribe("volume.slider", ["slider.changed"])?;
 
     // Initial trigger
     let _ = Command::new("sketchybar")

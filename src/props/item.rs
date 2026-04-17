@@ -1,10 +1,20 @@
-use crate::props::types::{Argb, Font, Property, ToSketchybarArgs, SketchyBool};
+use crate::props::types::{Argb, Font, Property, SketchyBool, ToSketchybarArgs};
 use std::fmt::Display;
 
 #[derive(Debug, Clone)]
 pub struct BarItem {
     pub name: String,
+    pub props: ItemProps,
+}
 
+impl ToSketchybarArgs for BarItem {
+    fn to_sketchybar_args(&self) -> Vec<Property> {
+        self.props.to_sketchybar_args()
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ItemProps {
     pub geometry: Geometry,
     pub icon: Icon,
     pub label: Label,
@@ -13,7 +23,7 @@ pub struct BarItem {
     pub popup: Option<PopupProperties>,
 }
 
-impl ToSketchybarArgs for BarItem {
+impl ToSketchybarArgs for ItemProps {
     fn to_sketchybar_args(&self) -> Vec<Property> {
         let mut args = self.geometry.to_sketchybar_args();
         args.extend(self.icon.to_sketchybar_args());
@@ -105,10 +115,10 @@ impl ToSketchybarArgs for Icon {
             args.extend(
                 props
                     .to_sketchybar_args()
-                    .iter_mut()
-                    .map(|p| {
+                    .into_iter()
+                    .map(|mut p| {
                         p.property = format!("icon.{}", p.property);
-                        p.clone()
+                        p
                     })
                     .collect::<Vec<Property>>(),
             );
@@ -164,10 +174,10 @@ impl ToSketchybarArgs for Label {
             args.extend(
                 props
                     .to_sketchybar_args()
-                    .iter_mut()
-                    .map(|p| {
+                    .into_iter()
+                    .map(|mut p| {
                         p.property = format!("label.{}", p.property);
-                        p.clone()
+                        p
                     })
                     .collect::<Vec<Property>>(),
             );
@@ -181,12 +191,14 @@ impl BarItem {
     pub fn new(name: String, position: ComponentPosition) -> Self {
         Self {
             name,
-            geometry: Geometry::new(position),
-            icon: Icon::new(),
-            label: Label::new(),
-            scripting: Scripting::new(),
-            text: None,
-            popup: None,
+            props: ItemProps {
+                geometry: Geometry::new(position),
+                icon: Icon::new(),
+                label: Label::new(),
+                scripting: Scripting::new(),
+                text: None,
+                popup: None,
+            },
         }
     }
 }
@@ -210,6 +222,12 @@ pub struct Text {
     pub shadow: Option<ShadowProperties>,
 }
 
+impl Text {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 impl ToSketchybarArgs for Text {
     fn to_sketchybar_args(&self) -> Vec<Property> {
         let mut args = vec![];
@@ -224,7 +242,10 @@ impl ToSketchybarArgs for Text {
             args.push(Property::new("color", &color.to_string()));
         }
         if let Some(highlight_color) = &self.highlight_color {
-            args.push(Property::new("highlight_color", &highlight_color.to_string()));
+            args.push(Property::new(
+                "highlight_color",
+                &highlight_color.to_string(),
+            ));
         }
         if let Some(padding_left) = self.padding_left {
             args.push(Property::new("padding_left", &padding_left.to_string()));
@@ -239,7 +260,10 @@ impl ToSketchybarArgs for Text {
             args.push(Property::new("font", &font.to_string()));
         }
         if let Some(scroll_duration) = self.scroll_duration {
-            args.push(Property::new("scroll_duration", &scroll_duration.to_string()));
+            args.push(Property::new(
+                "scroll_duration",
+                &scroll_duration.to_string(),
+            ));
         }
         if let Some(max_chars) = self.max_chars {
             args.push(Property::new("max_chars", &max_chars.to_string()));
@@ -252,16 +276,16 @@ impl ToSketchybarArgs for Text {
         }
 
         if let Some(background) = &self.background {
-            args.extend(background.to_sketchybar_args().iter_mut().map(|p| {
+            args.extend(background.to_sketchybar_args().into_iter().map(|mut p| {
                 p.property = format!("background.{}", p.property);
-                p.clone()
+                p
             }));
         }
 
         if let Some(shadow) = &self.shadow {
-            args.extend(shadow.to_sketchybar_args().iter_mut().map(|p| {
+            args.extend(shadow.to_sketchybar_args().into_iter().map(|mut p| {
                 p.property = format!("shadow.{}", p.property);
-                p.clone()
+                p
             }));
         }
 
@@ -325,30 +349,24 @@ impl ToSketchybarArgs for BackgroundProps {
         }
 
         if let Some(image) = &self.image {
-            args.extend(image.to_sketchybar_args().iter_mut().map(|p| {
+            args.extend(image.to_sketchybar_args().into_iter().map(|mut p| {
                 if p.property.is_empty() {
                     p.property = "image".to_string();
                 } else {
                     p.property = format!("image.{}", p.property);
                 }
-                p.clone()
+                p
             }));
         }
 
         if let Some(shadow) = &self.shadow {
-            args.extend(shadow.to_sketchybar_args().iter_mut().map(|p| {
+            args.extend(shadow.to_sketchybar_args().into_iter().map(|mut p| {
                 p.property = format!("shadow.{}", p.property);
-                p.clone()
+                p
             }));
         }
 
         args
-    }
-}
-
-impl BackgroundProps {
-    pub fn new() -> Self {
-        Self::default()
     }
 }
 
@@ -381,9 +399,9 @@ impl ToSketchybarArgs for ImageProps {
         ];
 
         if let Some(shadow) = &self.shadow {
-            args.extend(shadow.to_sketchybar_args().iter_mut().map(|p| {
+            args.extend(shadow.to_sketchybar_args().into_iter().map(|mut p| {
                 p.property = format!("shadow.{}", p.property);
-                p.clone()
+                p
             }));
         }
 
@@ -504,7 +522,10 @@ impl ToSketchybarArgs for Geometry {
             args.push(Property::new("position", &position.to_string()));
         }
         if let Some(ignore_association) = self.ignore_association {
-            args.push(Property::new("ignore_association", &ignore_association.to_on_off()));
+            args.push(Property::new(
+                "ignore_association",
+                &ignore_association.to_on_off(),
+            ));
         }
         if let Some(y_offset) = self.y_offset {
             args.push(Property::new("y_offset", &y_offset.to_string()));
@@ -525,10 +546,10 @@ impl ToSketchybarArgs for Geometry {
             args.push(Property::new("blur_radius", &blur_radius.to_string()));
         }
 
-        if let Some(space) = self.space {
-            if space != 0 {
-                args.push(Property::new("space", &space.to_string()));
-            }
+        if let Some(space) = self.space
+            && space != 0
+        {
+            args.push(Property::new("space", &space.to_string()));
         }
 
         if let Some(display) = &self.display {
@@ -542,9 +563,9 @@ impl ToSketchybarArgs for Geometry {
         }
 
         if let Some(background) = &self.background {
-            args.extend(background.to_sketchybar_args().iter_mut().map(|p| {
+            args.extend(background.to_sketchybar_args().into_iter().map(|mut p| {
                 p.property = format!("background.{}", p.property);
-                p.clone()
+                p
             }));
         }
 
@@ -692,9 +713,9 @@ impl ToSketchybarArgs for PopupProperties {
         }
 
         if let Some(background) = &self.background {
-            args.extend(background.to_sketchybar_args().iter_mut().map(|p| {
+            args.extend(background.to_sketchybar_args().into_iter().map(|mut p| {
                 p.property = format!("popup.background.{}", p.property);
-                p.clone()
+                p
             }));
         }
 
