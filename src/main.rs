@@ -9,7 +9,8 @@ use sketchybarrc::items::{
     apple, battery, bluetooth, clock, cpu, media, network, volume, weather, workspaces,
 };
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 1 {
@@ -46,7 +47,20 @@ fn main() -> Result<()> {
                 return Ok(());
             }
             "--update-bluetooth" => {
-                return bluetooth::update();
+                return bluetooth::update().await;
+            }
+            "--update-bluetooth-popup" => {
+                return bluetooth::update_popup(false).await;
+            }
+            "--scan-bluetooth" => {
+                return bluetooth::update_popup(true).await;
+            }
+            "--toggle-bluetooth-device" => {
+                if args.len() > 2 {
+                    bluetooth::toggle_device(&args[2]).await?;
+                    return bluetooth::update_popup(false).await;
+                }
+                return Ok(());
             }
             "--update-clock" => {
                 let clock_data = clock::Clock::fetch()?;
@@ -147,7 +161,7 @@ fn main() -> Result<()> {
     volume::setup(&exe_path)?;
     battery::Battery::setup(&exe_path)?;
     network::Network::setup(&exe_path)?;
-    bluetooth::setup(&exe_path)?;
+    bluetooth::setup(&exe_path).await?;
     cpu::Cpu::setup(&exe_path)?;
 
     api::update()?;

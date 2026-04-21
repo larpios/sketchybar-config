@@ -178,7 +178,7 @@ pub fn setup(exe_path: &str) -> Result<()> {
             color: Some(CATPUCCIN_MOCHA.blue.clone()),
             font: Some(crate::props::types::Font {
                 family: "JetBrainsMono Nerd Font".to_string(),
-                size: 14.0,
+                size: 12.0,
                 type_: crate::props::types::FontType::Regular,
             }),
             ..Default::default()
