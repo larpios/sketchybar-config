@@ -22,6 +22,27 @@ fn main() -> Result<()> {
             "--update-battery" => {
                 let battery_data = battery::Battery::fetch()?;
                 api::set_item("battery", &battery_data)?;
+
+                // Update popups
+                api::set_args(
+                    "battery.status",
+                    [&format!("label={}", battery_data.status)],
+                )?;
+                api::set_args(
+                    "battery.wattage",
+                    [&format!(
+                        "label={:.1}W",
+                        battery_data.wattage.unwrap_or(0.0)
+                    )],
+                )?;
+                api::set_args(
+                    "battery.health",
+                    [&format!(
+                        "label={}% ({} cycles)",
+                        battery_data.health.unwrap_or(100),
+                        battery_data.cycle_count.unwrap_or(0)
+                    )],
+                )?;
                 return Ok(());
             }
             "--update-bluetooth" => {
