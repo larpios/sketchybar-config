@@ -17,7 +17,8 @@ impl Weather {
         let temp = match ureq::get("https://wttr.in/?format=%t").call() {
             Ok(response) => {
                 let text = response
-                    .into_string()
+                    .into_body()
+                    .read_to_string()
                     .unwrap_or_default()
                     .trim()
                     .to_string();
