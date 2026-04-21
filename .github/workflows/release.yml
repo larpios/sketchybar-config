@@ -45,26 +45,30 @@ jobs:
       - name: Build aarch64
         run: cargo build --release --target aarch64-apple-darwin
 
-      - name: Create Universal Binary
+      - name: Package Binaries
         run: |
+          # x86_64
+          mkdir -p x86_64
+          cp target/x86_64-apple-darwin/release/sketchybarrc x86_64/
+          tar -czvf sketchybarrc-x86_64-apple-darwin.tar.gz -C x86_64 sketchybarrc
+          
+          # aarch64
+          mkdir -p aarch64
+          cp target/aarch64-apple-darwin/release/sketchybarrc aarch64/
+          tar -czvf sketchybarrc-aarch64-apple-darwin.tar.gz -C aarch64 sketchybarrc
+
+          # Universal
           lipo -create -output sketchybarrc \
             target/x86_64-apple-darwin/release/sketchybarrc \
             target/aarch64-apple-darwin/release/sketchybarrc
           tar -czvf sketchybarrc-universal-apple-darwin.tar.gz sketchybarrc
-          
-          # Also package individual ones just in case
-          cp target/x86_64-apple-darwin/release/sketchybarrc sketchybarrc-x86_64
-          tar -czvf sketchybarrc-x86_64-apple-darwin.tar.gz sketchybarrc-x86_64
-          
-          cp target/aarch64-apple-darwin/release/sketchybarrc sketchybarrc-aarch64
-          tar -czvf sketchybarrc-aarch64-apple-darwin.tar.gz sketchybarrc-aarch64
 
       - name: Upload Binaries
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            sketchybarrc-universal-apple-darwin.tar.gz
             sketchybarrc-x86_64-apple-darwin.tar.gz
             sketchybarrc-aarch64-apple-darwin.tar.gz
+            sketchybarrc-universal-apple-darwin.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -2,6 +2,11 @@
 name = "sketchybarrc"
 version = "0.1.0"
 edition = "2024"
+repository = "https://github.com/larpios/sketchybar-config"
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ target }.tar.gz"
+pkg-fmt = "tgz"
 
 [dependencies]
 anyhow = "1.0.102"
