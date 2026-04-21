@@ -10,80 +10,47 @@ use std::env;
 use std::process::Command;
 
 pub fn update() -> Result<()> {
-    let sender = env::var("SENDER").unwrap_or_else(|_| "".to_string());
+    const VOLUME_SCROLL_SENSITIVITY: f32 = 0.2;
+
+    let sender = env::var("SENDER").unwrap_or_default();
     let name = env::var("NAME").unwrap_or_default();
+    let info = env::var("INFO").unwrap_or_default();
+    let percentage = env::var("PERCENTAGE").unwrap_or_default();
+    let scroll_delta = env::var("SCROLL_DELTA").unwrap_or_default();
 
-    if name == "volume.slider" {
-        // Get the slider percentage from SLIDER_PERCENTAGE or fetch current volume
-        let slider_value = env::var("SLIDER_PERCENTAGE").unwrap_or_else(|_| {
-            // Fallback: query sketchybar for current slider value
-            let output = Command::new("sketchybar")
-                .args(["--query", "volume.slider"])
-                .output()
-                .ok();
-            if let Some(output) = output {
-                String::from_utf8_lossy(&output.stdout)
-                    .lines()
-                    .find_map(|line| {
-                        if line.contains("\"slider.percentage\"") {
-                            line.split(":")
-                                .nth(1)?
-                                .trim()
-                                .trim_end_matches(",")
-                                .parse::<f32>()
-                                .ok()
-                                .map(|v| (v as u8).to_string())
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or_else(|| "50".to_string())
-            } else {
-                "50".to_string()
-            }
-        });
-
-        if let Ok(vol) = slider_value.parse::<u8>() {
+    if name == "volume.slider" && !percentage.is_empty() {
+        if let Ok(vol) = percentage.parse::<u8>() {
             let _ = Command::new("osascript")
                 .args(["-e", &format!("set volume output volume {}", vol)])
                 .status();
         }
-        return Ok(());
-    }
-
-    match sender.as_str() {
-        "mouse.scrolled.up" => {
-            let _ = Command::new("osascript")
-                .args([
-                    "-e",
-                    "set volume output volume ((output volume of (get volume settings)) + 5)",
-                ])
-                .status();
-        }
-        "mouse.scrolled.down" => {
-            let _ = Command::new("osascript")
-                .args([
-                    "-e",
-                    "set volume output volume ((output volume of (get volume settings)) - 5)",
-                ])
-                .status();
-        }
-        "mouse.clicked" => {
-            // Only toggle popup if we clicked the volume item itself, not the slider
-            if name == "volume" {
+    } else {
+        match sender.as_str() {
+            "mouse.scrolled" => {
+                if let Ok(delta) = scroll_delta.parse::<f32>() {
+                    let _ = Command::new("osascript")
+                    .args([
+                        "-e",
+                        format!("set volume output volume ((output volume of (get volume settings)) + {})", -delta * VOLUME_SCROLL_SENSITIVITY).as_str(),
+                    ])
+                    .status();
+                }
+            }
+            "mouse.clicked" if name == "volume" => {
                 let _ = Command::new("sketchybar")
                     .args(["--set", "volume", "popup.drawing=toggle"])
                     .status();
             }
+            _ => {}
         }
-        _ => {}
     }
 
-    // Always update the UI based on INFO or fallback to current volume via osascript
-    let vol_str = if sender == "volume_change" {
-        env::var("INFO").unwrap_or_else(|_| "50".to_string())
+    // Fetch current volume level
+    let vol_str = if sender == "volume_change" && !info.is_empty() {
+        info
+    } else if name == "volume.slider" && !percentage.is_empty() {
+        percentage
     } else {
-        // Fallback: fetch current volume
         let output = Command::new("osascript")
             .args(["-e", "output volume of (get volume settings)"])
             .output()?;
@@ -161,25 +128,22 @@ pub fn setup(exe_path: &str) -> Result<()> {
     api::add_item(&item)?;
     api::subscribe(
         &item.name,
-        [
-            "volume_change",
-            "mouse.scrolled.up",
-            "mouse.scrolled.down",
-            "mouse.clicked",
-        ],
+        ["volume_change", "mouse.scrolled", "mouse.clicked"],
     )?;
 
     // Setup Slider
     let slider = Slider {
+        name: "volume.slider".to_string(),
+        percentage: Some(50),
         width: Some(100),
-        highlight_color: Some(CATPUCCIN_MOCHA.blue.clone()),
-        knob: Some("".to_string()),
+        highlight_color: Some(CATPUCCIN_MOCHA.lavender.clone()),
+        knob: Some("󰝥".to_string()),
         knob_props: Some(Text {
             color: Some(CATPUCCIN_MOCHA.blue.clone()),
             font: Some(crate::props::types::Font {
                 family: "JetBrainsMono Nerd Font".to_string(),
-                size: 12.0,
-                type_: crate::props::types::FontType::Regular,
+                size: 14.0,
+                style: crate::props::types::FontStyle::Regular,
             }),
             ..Default::default()
         }),
@@ -193,16 +157,20 @@ pub fn setup(exe_path: &str) -> Result<()> {
         }),
         item: Some(ItemProps {
             scripting: Scripting {
-                script: Some(ScriptType::String(format!("{} --update-volume", exe_path))),
+                script: Some(ScriptType::String(
+                    r#"
+                    osascript -e "set volume output volume $PERCENTAGE"
+                    "#
+                    .to_string(),
+                )),
                 ..Default::default()
             },
             ..Default::default()
         }),
-        ..Default::default()
     };
 
     api::add_special_item("slider", "volume.slider", "popup.volume", &slider)?;
-    api::subscribe("volume.slider", ["slider.changed"])?;
+    api::subscribe(&slider.name, ["mouse.clicked"])?;
 
     // Initial trigger
     let _ = Command::new("sketchybar")

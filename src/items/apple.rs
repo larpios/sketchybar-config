@@ -10,7 +10,7 @@ pub fn setup() -> anyhow::Result<()> {
         color: Some(CATPUCCIN_MOCHA.text.clone()),
         font: Some(Font {
             family: "JetBrainsMono Nerd Font".to_string(),
-            type_: crate::props::types::FontType::Regular,
+            style: crate::props::types::FontStyle::Regular,
             size: 18.0,
         }),
         ..Default::default()

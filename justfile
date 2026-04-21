@@ -13,9 +13,9 @@ test:
 
 clippy:
     @echo "Running clippy..."
-    @cargo clippy
+    @cargo clippy -- -D warnings
 
-check: check-fmt test
+check: check-fmt test clippy
     @cargo check
 
 fmt:

@@ -61,6 +61,7 @@ impl ToSketchybarArgs for Graph {
 
 #[derive(Debug, Clone, Default)]
 pub struct Slider {
+    pub name: String,
     pub width: Option<u32>,
     pub percentage: Option<u32>,
     pub highlight_color: Option<Argb>,

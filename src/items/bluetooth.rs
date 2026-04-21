@@ -174,7 +174,7 @@ async fn continuous_scan() -> Result<()> {
 
     let font = crate::props::types::Font {
         family: "JetBrainsMono Nerd Font".to_string(),
-        type_: crate::props::types::FontType::Italic,
+        style: crate::props::types::FontStyle::Italic,
         size: 11.0,
     };
     loading.props.label.props = Some(Text {
@@ -228,7 +228,7 @@ async fn continuous_scan() -> Result<()> {
                 } else {
                     break;
                 }
-                
+
                 // Animate spinner
                 spinner_idx = (spinner_idx + 1) % spinners.len();
                 let _ = Command::new("sketchybar")

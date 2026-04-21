@@ -108,7 +108,7 @@ impl Display for Argb {
 #[derive(Debug, Clone)]
 pub struct Font {
     pub family: String,
-    pub type_: FontType,
+    pub style: FontStyle,
     pub size: f32,
 }
 
@@ -116,7 +116,7 @@ impl Default for Font {
     fn default() -> Self {
         Self {
             family: "JetBrainsMono Nerd Font".to_string(),
-            type_: FontType::Regular,
+            style: FontStyle::Regular,
             size: 14.0,
         }
     }
@@ -124,19 +124,19 @@ impl Default for Font {
 
 impl Display for Font {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}:{}", self.family, self.type_, self.size)
+        write!(f, "{}:{}:{}", self.family, self.style, self.size)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum FontType {
+pub enum FontStyle {
     Regular,
     Bold,
     Italic,
     BoldItalic,
 }
 
-impl Display for FontType {
+impl Display for FontStyle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Regular => write!(f, "Regular"),
