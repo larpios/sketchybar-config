@@ -1,5 +1,5 @@
-use crate::property;
-use crate::props::types::{Property, ToSketchybarArgs};
+use crate::items::Item;
+use anyhow::Result;
 use local_ip_address::local_ip;
 use std::process::Command;
 
@@ -12,28 +12,25 @@ pub struct Network {
     pub device: String,
 }
 
-impl ToSketchybarArgs for Network {
-    fn to_sketchybar_args(&self) -> Vec<Property> {
-        if !self.is_connected {
-            vec![property!("icon", "󰤮"), property!("label", "Disconnected")]
-        } else {
-            let icon = if self.is_wifi { "󰤨" } else { "󰈀" };
-            let display_ssid = if self.ssid.is_empty() {
-                if self.is_wifi {
-                    "Wi-Fi".to_string()
-                } else {
-                    "Ethernet".to_string()
-                }
-            } else {
-                self.ssid.clone()
-            };
+impl Item for Network {
+    fn fetch() -> Result<Self> {
+        Network::fetch()
+    }
 
-            vec![property!("icon", icon), property!("label", &display_ssid)]
-        }
+    fn update_items(&self) -> Result<()> {
+        Network::update_items(self)
+    }
+
+    fn setup(exe_path: &str) -> Result<()> {
+        Network::setup(exe_path)
     }
 }
 
 impl Network {
+    pub fn update_command() -> Result<()> {
+        let data = Self::fetch()?;
+        Self::update_items(&data)
+    }
     pub fn fetch() -> anyhow::Result<Self> {
         // Use scutil to find the primary interface - much faster and more reliable on macOS
         let scutil_output = Command::new("scutil").arg("--nwi").output()?;
@@ -136,21 +133,45 @@ impl Network {
     }
 
     pub fn setup(exe_path: &str) -> anyhow::Result<()> {
-        use crate::api;
-        use crate::props::item::{BackgroundProps, BarItem, ComponentPosition, ScriptType};
+        use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, ToggleState};
         use crate::themes::CATPUCCIN_MOCHA;
 
-        let mut item = BarItem::new("network".to_string(), ComponentPosition::Right);
-        item.props.scripting.update_freq = 10;
-        item.props.scripting.script =
-            Some(ScriptType::String(format!("{} --update-network", exe_path)));
-        let bg = BackgroundProps {
-            color: Some(CATPUCCIN_MOCHA.surface0.clone()),
-            drawing: Some(true),
-            ..Default::default()
+        let item = BarItem::new("network")
+            .position(ComponentPosition::Right)
+            .update_freq(10)
+            .script(&format!("{} --update-network", exe_path))
+            .background_color(CATPUCCIN_MOCHA.surface0.clone())
+            .background_drawing(ToggleState::On);
+
+        item.add()?;
+
+        // Initial update
+        let data = Self::fetch()?;
+        Self::update_items(&data)?;
+
+        Ok(())
+    }
+
+    pub fn update_items(data: &Self) -> anyhow::Result<()> {
+        use crate::api::item::{BarItem, ItemBuilder};
+
+        let item = if !data.is_connected {
+            BarItem::new("network").icon("󰤮").label("Disconnected")
+        } else {
+            let icon = if data.is_wifi { "󰤨" } else { "󰈀" };
+            let display_ssid = if data.ssid.is_empty() {
+                if data.is_wifi {
+                    "Wi-Fi".to_string()
+                } else {
+                    "Ethernet".to_string()
+                }
+            } else {
+                data.ssid.clone()
+            };
+            BarItem::new("network").icon(icon).label(&display_ssid)
         };
-        item.props.geometry.background = Some(bg);
-        api::add_item(&item)?;
+        item.set()?;
+
         Ok(())
     }
 }

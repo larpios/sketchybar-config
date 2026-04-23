@@ -21,22 +21,35 @@ impl Property {
     }
 }
 
-#[macro_export]
-macro_rules! property {
-    ($property:expr, $value:expr) => {
-        Property::new($property, $value)
-    };
-    ($property:expr, $value:ident) => {
-        Property::new($property, stringify!($value))
-    };
-}
-
 pub trait ToSketchybarArgs {
     fn to_sketchybar_args(&self) -> Vec<Property>;
 }
 
 pub trait SketchyBool {
     fn to_on_off(&self) -> String;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToggleState {
+    On,
+    Off,
+    Toggle,
+}
+
+impl Display for ToggleState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::On => write!(f, "on"),
+            Self::Off => write!(f, "off"),
+            Self::Toggle => write!(f, "toggle"),
+        }
+    }
+}
+
+impl SketchyBool for ToggleState {
+    fn to_on_off(&self) -> String {
+        self.to_string()
+    }
 }
 
 impl SketchyBool for bool {
@@ -75,6 +88,15 @@ impl Argb {
             r: 0,
             g: 0,
             b: 0,
+        }
+    }
+
+    pub fn from_u32(hex: u32) -> Self {
+        Self {
+            a: ((hex >> 24) & 0xff) as u8,
+            r: ((hex >> 16) & 0xff) as u8,
+            g: ((hex >> 8) & 0xff) as u8,
+            b: (hex & 0xff) as u8,
         }
     }
 }
@@ -143,6 +165,77 @@ impl Display for FontStyle {
             Self::Bold => write!(f, "Bold"),
             Self::Italic => write!(f, "Italic"),
             Self::BoldItalic => write!(f, "BoldItalic"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum TextAlignment {
+    Left,
+    Center,
+    Right,
+}
+
+impl Display for TextAlignment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Left => write!(f, "left"),
+            Self::Center => write!(f, "center"),
+            Self::Right => write!(f, "right"),
+        }
+    }
+}
+
+#[derive(Default, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum ComponentPosition {
+    #[default]
+    Left,
+    Right,
+    Center,
+    Popup(String),
+}
+
+impl Display for ComponentPosition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Left => write!(f, "left"),
+            Self::Right => write!(f, "right"),
+            Self::Center => write!(f, "center"),
+            Self::Popup(name) => write!(f, "popup.{}", name),
+        }
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PopupAlign {
+    #[default]
+    Left,
+    Right,
+    Center,
+}
+
+impl Display for PopupAlign {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Left => write!(f, "left"),
+            Self::Right => write!(f, "right"),
+            Self::Center => write!(f, "center"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum WidthMode {
+    Value(u32),
+    #[default]
+    Dyanmic,
+}
+
+impl Display for WidthMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Value(value) => write!(f, "{}", value),
+            Self::Dyanmic => write!(f, "dynamic"),
         }
     }
 }

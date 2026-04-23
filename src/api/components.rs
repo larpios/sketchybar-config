@@ -1,5 +1,5 @@
-use crate::props::item::{BackgroundProps, ItemProps, Text};
-use crate::props::types::{Argb, Property, ToSketchybarArgs};
+use crate::api::item::BackgroundProps;
+use crate::api::types::{Argb, Property, ToSketchybarArgs};
 
 #[derive(Debug, Clone)]
 pub struct Graph {
@@ -54,52 +54,6 @@ impl ToSketchybarArgs for Graph {
                 .collect::<Vec<String>>()
                 .join(",");
             args.push(Property::new("graph.data_points", &data));
-        }
-        args
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct Slider {
-    pub name: String,
-    pub width: Option<u32>,
-    pub percentage: Option<u32>,
-    pub highlight_color: Option<Argb>,
-    pub knob: Option<String>,
-    pub knob_props: Option<Text>,
-    pub background: Option<BackgroundProps>,
-    pub item: Option<ItemProps>,
-}
-
-impl ToSketchybarArgs for Slider {
-    fn to_sketchybar_args(&self) -> Vec<Property> {
-        let mut args = vec![];
-        if let Some(width) = self.width {
-            args.push(Property::new("slider.width", &width.to_string()));
-        }
-        if let Some(percentage) = self.percentage {
-            args.push(Property::new("slider.percentage", &percentage.to_string()));
-        }
-        if let Some(color) = &self.highlight_color {
-            args.push(Property::new("slider.highlight_color", &color.to_string()));
-        }
-        if let Some(knob) = &self.knob {
-            args.push(Property::new("slider.knob", &knob.to_string()));
-        }
-        if let Some(knob_props) = &self.knob_props {
-            args.extend(knob_props.to_sketchybar_args().into_iter().map(|mut p| {
-                p.property = format!("slider.knob.{}", p.property);
-                p
-            }));
-        }
-        if let Some(bg) = &self.background {
-            args.extend(bg.to_sketchybar_args().into_iter().map(|mut p| {
-                p.property = format!("slider.background.{}", p.property);
-                p
-            }));
-        }
-        if let Some(item) = &self.item {
-            args.extend(item.to_sketchybar_args());
         }
         args
     }

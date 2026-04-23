@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use crate::props::types::Argb;
+use crate::api::types::Argb;
 
 macro_rules! theme {
     ($name:ident, $theme:expr) => {

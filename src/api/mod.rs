@@ -1,9 +1,18 @@
+pub mod bar;
+pub mod components;
+pub mod event;
+pub mod item;
+pub mod types;
+
 use std::process::Command;
 
-use crate::props::{item::BarItem, types::ToSketchybarArgs};
 use anyhow::{Ok, Result};
 
-#[macro_export]
+use crate::api::bar::Bar;
+use crate::api::event::BarEvent;
+use crate::api::item::{BarItem, ChildComponent, ComponentPosition};
+use crate::api::types::ToSketchybarArgs;
+
 macro_rules! sb {
     ($args:ident) => {
         {
@@ -15,11 +24,22 @@ macro_rules! sb {
             Ok(())
         }
     };
+    ($cmd:expr, $v:ident) => {
+        {
+            let output = Command::new("sketchybar").arg($cmd).args($v).output()?;
+            if !output.status.success() {
+                eprintln!("Error executing sketchybar command with args: {}", $cmd);
+                eprintln!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
+            }
+            Ok(())
+        }
+    };
     ($($arg:expr),*) => {
         {
-            let output = Command::new("sketchybar").args([$($arg),*]).output()?;
+            let cmd_args = [$($arg.to_string()),*];
+            let output = Command::new("sketchybar").args(&cmd_args).output()?;
             if !output.status.success() {
-                eprintln!("Error executing sketchybar command with args: {:?}", [$($arg),*]);
+                eprintln!("Error executing sketchybar command with args: {:?}", cmd_args);
                 eprintln!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
             }
             Ok(())
@@ -27,17 +47,14 @@ macro_rules! sb {
     };
 }
 
-pub fn add_bar(bar: &super::props::bar::Bar) -> Result<()> {
-    let mut args = vec!["--bar".to_string()];
+pub fn add_bar(bar: &Bar) -> Result<()> {
+    let args: Vec<_> = bar
+        .to_sketchybar_args()
+        .iter()
+        .map(|p| p.to_string())
+        .collect();
 
-    args.extend(
-        bar.to_sketchybar_args()
-            .iter()
-            .map(|p| p.to_string())
-            .collect::<Vec<String>>(),
-    );
-
-    sb!(args)?;
+    sb!("--bar", args)?;
 
     Ok(())
 }
@@ -54,11 +71,7 @@ where
 }
 
 pub fn add_item(item: &BarItem) -> Result<()> {
-    // Remove if exists (silently)
-    let _ = Command::new("sketchybar")
-        .arg("--remove")
-        .arg(&item.name)
-        .output();
+    sb!("--remove", &item.name)?;
 
     let mut args = vec![
         "--add".to_string(),
@@ -67,7 +80,8 @@ pub fn add_item(item: &BarItem) -> Result<()> {
         item.props
             .geometry
             .position
-            .unwrap_or(crate::props::item::ComponentPosition::Left)
+            .clone()
+            .unwrap_or_default()
             .to_string(),
         "--set".to_string(),
         item.name.clone(),
@@ -81,6 +95,25 @@ pub fn add_item(item: &BarItem) -> Result<()> {
     );
 
     sb!(args)?;
+
+    // Handle children
+    for child in &item.children {
+        match child {
+            ChildComponent::Item(child_item) => {
+                let mut c = child_item.clone();
+                c.props.geometry.position = Some(ComponentPosition::Popup(item.name.clone()));
+                add_item(&c)?;
+            }
+            ChildComponent::Slider(slider) => {
+                add_special_item(
+                    "slider",
+                    &slider.name,
+                    &format!("popup.{}", item.name),
+                    slider.as_ref(),
+                )?;
+            }
+        }
+    }
 
     Ok(())
 }
@@ -146,13 +179,13 @@ pub fn add_event(event: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn subscribe<I, S>(item: &str, events: I) -> Result<()>
+pub fn subscribe<I, E>(item: &str, events: I) -> Result<()>
 where
-    I: IntoIterator<Item = S>,
-    S: AsRef<str>,
+    I: IntoIterator<Item = E>,
+    E: Into<BarEvent>,
 {
     let mut cmd_args = vec!["--subscribe".to_string(), item.to_string()];
-    cmd_args.extend(events.into_iter().map(|s| s.as_ref().to_string()));
+    cmd_args.extend(events.into_iter().map(|e| e.into().to_string()));
     sb!(cmd_args)?;
     Ok(())
 }
@@ -162,7 +195,7 @@ pub fn update() -> Result<()> {
     Ok(())
 }
 
-pub fn trigger_evt(evt: &str) -> Result<()> {
-    sb!("--trigger", evt)?;
+pub fn trigger_evt<E: Into<BarEvent>>(evt: E) -> Result<()> {
+    sb!("--trigger".to_string(), evt.into().to_string())?;
     Ok(())
 }

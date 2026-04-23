@@ -1,7 +1,10 @@
-use crate::api;
-use crate::props::item::{BackgroundProps, BarItem, ComponentPosition, ScriptType, Text};
+use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, ToggleState};
 use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::Result;
+
+pub fn update_command() -> Result<()> {
+    update()
+}
 
 pub fn update() -> Result<()> {
     let ws_id = match std::env::var("FOCUSED_WORKSPACE") {
@@ -25,83 +28,51 @@ pub fn update() -> Result<()> {
         let active_icon = CATPUCCIN_MOCHA.crust.clone();
         let inactive_icon = CATPUCCIN_MOCHA.text.clone();
 
-        let args = &[
-            format!(
-                "background.color={}",
-                if is_active { active_bg } else { inactive_bg }
-            ),
-            format!(
-                "icon.color={}",
-                if is_active {
-                    active_icon
-                } else {
-                    inactive_icon
-                }
-            ),
-        ];
-        api::set_args(&ws_name, args)?;
+        BarItem::new(&ws_name)
+            .background_color(if is_active { active_bg } else { inactive_bg })
+            .icon_color(if is_active {
+                active_icon
+            } else {
+                inactive_icon
+            })
+            .set()?;
     }
 
     Ok(())
 }
 
 pub fn setup(exe_path: &str) -> Result<()> {
-    let mut ws_items = (1..=9)
-        .map(|i| {
-            let ws_name = format!("workspace.{}", i);
-            let mut ws_item = BarItem::new(ws_name.clone(), ComponentPosition::Left);
-            ws_item.props.icon.icon = Some(i.to_string());
+    for i in 1..=9 {
+        let ws_name = format!("workspace.{}", i);
+        let mut item = BarItem::new(&ws_name)
+            .position(ComponentPosition::Left)
+            .icon(&i.to_string())
+            .background_color(CATPUCCIN_MOCHA.surface1.clone())
+            .background_corner_radius(6)
+            .background_drawing(ToggleState::On)
+            .label_drawing(ToggleState::Off)
+            .click_script(&format!(
+                "aerospace workspace {} && {} --update-workspaces",
+                i, exe_path
+            ));
 
-            let bg = BackgroundProps {
-                color: Some(CATPUCCIN_MOCHA.surface1.clone()),
-                corner_radius: Some(6),
-                drawing: Some(true),
-                ..Default::default()
-            };
-            ws_item.props.geometry.background = Some(bg);
+        if i == 1 {
+            item = item.script(&format!("{} --update-workspaces", exe_path));
+        }
 
-            let label_props = Text {
-                drawing: Some(false),
-                ..Default::default()
-            };
-
-            ws_item.props.label.props = Some(label_props);
-
-            ws_item.props.scripting.click_script =
-                Some(ScriptType::String(format!("aerospace workspace {}", i)));
-
-            ws_item
-        })
-        .collect::<Vec<BarItem>>();
-
-    for item in ws_items.iter_mut() {
-        item.props.scripting.click_script = Some(ScriptType::String(format!(
-            "aerospace workspace {} && {} --update-workspaces",
-            item.name.trim_start_matches("workspace."),
-            exe_path
-        )));
-    }
-    ws_items[0].props.scripting.script = Some(ScriptType::String(format!(
-        "{} --update-workspaces",
-        exe_path
-    )));
-
-    let first_ws_name = ws_items[0].name.clone();
-
-    for item in ws_items {
-        api::add_item(&item)?;
+        item.add()?;
     }
 
-    api::add_event("aerospace_workspace_change")?;
-    api::add_event("workspace_change")?;
-    api::subscribe(
-        &first_ws_name,
-        [
-            "aerospace_workspace_change",
-            "space_change",
-            "workspace_change",
-        ],
-    )?;
+    use crate::api::event::BarEvent;
+
+    crate::api::add_event("aerospace_workspace_change")?;
+    crate::api::add_event("workspace_change")?;
+
+    BarItem::new("workspace.1").subscribe([
+        BarEvent::from("aerospace_workspace_change"),
+        BarEvent::SpaceChange,
+        BarEvent::from("workspace_change"),
+    ])?;
 
     Ok(())
 }

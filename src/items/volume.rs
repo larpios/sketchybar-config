@@ -1,13 +1,14 @@
 use crate::api;
-use crate::props::components::Slider;
-use crate::props::item::{
-    BackgroundProps, BarItem, ComponentPosition, ItemProps, PopupAlign, PopupProperties,
-    ScriptType, Scripting, Text,
-};
+use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign, Slider};
+use crate::api::types::{Font, ToggleState};
 use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::Result;
 use std::env;
 use std::process::Command;
+
+pub fn update_command() -> Result<()> {
+    update()
+}
 
 pub fn update() -> Result<()> {
     const VOLUME_SCROLL_SENSITIVITY: f32 = 0.2;
@@ -37,9 +38,9 @@ pub fn update() -> Result<()> {
                 }
             }
             "mouse.clicked" if name == "volume" => {
-                let _ = Command::new("sketchybar")
-                    .args(["--set", "volume", "popup.drawing=toggle"])
-                    .status();
+                BarItem::new("volume")
+                    .popup_drawing(ToggleState::Toggle)
+                    .set()?;
             }
             _ => {}
         }
@@ -79,13 +80,14 @@ pub fn update() -> Result<()> {
         }
     };
 
-    api::set_args(
-        "volume",
-        [&format!("icon={}", icon), &format!("label={}%", vol)],
-    )?;
+    BarItem::new("volume")
+        .icon(icon)
+        .label(&format!("{}%", vol))
+        .set()?;
 
-    // Keep slider in sync
-    api::set_args("volume.slider", [&format!("slider.percentage={}", vol)])?;
+    Slider::new("volume.slider")
+        .percentage(vol as u32)
+        .set()?;
 
     Ok(())
 }
@@ -93,84 +95,46 @@ pub fn update() -> Result<()> {
 pub fn setup(exe_path: &str) -> Result<()> {
     api::add_event("volume_change")?;
 
-    let mut item = BarItem::new("volume".to_string(), ComponentPosition::Right);
-    item.props.scripting.script = Some(ScriptType::String(format!("{} --update-volume", exe_path)));
+    let item = BarItem::new("volume")
+        .position(ComponentPosition::Right)
+        .script(&format!("{} --update-volume", exe_path))
+        .background_color(CATPUCCIN_MOCHA.surface0.clone())
+        .background_drawing(ToggleState::On)
+        .icon_color(CATPUCCIN_MOCHA.blue.clone())
+        .popup_align(PopupAlign::Center)
+        .popup_background_color(CATPUCCIN_MOCHA.base.clone())
+        .popup_background_corner_radius(8)
+        .popup_background_border_width(2)
+        .popup_background_border_color(CATPUCCIN_MOCHA.surface1.clone())
+        .add_slider(
+            Slider::new("volume.slider")
+                .percentage(50)
+                .background_drawing(ToggleState::Off)
+                .slider_width(100)
+                .slider_background_height(5)
+                .slider_background_corner_radius(3)
+                .slider_background_color(CATPUCCIN_MOCHA.surface1.clone())
+                .slider_background_drawing(ToggleState::On)
+                .padding_left(5)
+                .padding_right(5)
+                .highlight_color(CATPUCCIN_MOCHA.lavender.clone())
+                .knob("󰝥")
+                .knob_color(CATPUCCIN_MOCHA.blue.clone())
+                .knob_font(Font::default())
+                .script(r#"osascript -e "set volume output volume $PERCENTAGE""#),
+        );
 
-    let bg = BackgroundProps {
-        color: Some(CATPUCCIN_MOCHA.surface0.clone()),
-        drawing: Some(true),
-        ..Default::default()
-    };
-    item.props.geometry.background = Some(bg);
-    item.props.geometry.scroll_texts = Some(true);
+    use crate::api::event::BarEvent;
 
-    let icon_props = Text {
-        color: Some(CATPUCCIN_MOCHA.blue.clone()),
-        ..Default::default()
-    };
-    item.props.icon.props = Some(icon_props);
+    item.add()?;
+    item.subscribe([
+        BarEvent::VolumeChange,
+        BarEvent::MouseScrolled,
+        BarEvent::MouseClicked,
+    ])?;
 
-    // Add popup properties to volume item
-    let popup_bg = BackgroundProps {
-        color: Some(CATPUCCIN_MOCHA.base.clone()),
-        corner_radius: Some(8),
-        border_width: Some(2),
-        border_color: Some(CATPUCCIN_MOCHA.surface1.clone()),
-        ..Default::default()
-    };
-    let popup_props = PopupProperties {
-        align: PopupAlign::Center,
-        background: Some(popup_bg),
-        ..Default::default()
-    };
-    item.props.popup = Some(popup_props);
-
-    api::add_item(&item)?;
-    api::subscribe(
-        &item.name,
-        ["volume_change", "mouse.scrolled", "mouse.clicked"],
-    )?;
-
-    // Setup Slider
-    let slider = Slider {
-        name: "volume.slider".to_string(),
-        percentage: Some(50),
-        width: Some(100),
-        highlight_color: Some(CATPUCCIN_MOCHA.lavender.clone()),
-        knob: Some("󰝥".to_string()),
-        knob_props: Some(Text {
-            color: Some(CATPUCCIN_MOCHA.blue.clone()),
-            font: Some(crate::props::types::Font {
-                family: "JetBrainsMono Nerd Font".to_string(),
-                size: 14.0,
-                style: crate::props::types::FontStyle::Regular,
-            }),
-            ..Default::default()
-        }),
-        background: Some(BackgroundProps {
-            color: Some(CATPUCCIN_MOCHA.surface0.clone()),
-            height: Some(5),
-            corner_radius: Some(3),
-            padding_left: Some(15),
-            padding_right: Some(15),
-            ..Default::default()
-        }),
-        item: Some(ItemProps {
-            scripting: Scripting {
-                script: Some(ScriptType::String(
-                    r#"
-                    osascript -e "set volume output volume $PERCENTAGE"
-                    "#
-                    .to_string(),
-                )),
-                ..Default::default()
-            },
-            ..Default::default()
-        }),
-    };
-
-    api::add_special_item("slider", "volume.slider", "popup.volume", &slider)?;
-    api::subscribe(&slider.name, ["mouse.clicked"])?;
+    // Slider also needs mouse clicked subscription
+    api::subscribe("volume.slider", [BarEvent::MouseClicked])?;
 
     // Initial trigger
     let _ = Command::new("sketchybar")

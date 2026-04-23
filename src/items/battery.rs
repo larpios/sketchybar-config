@@ -1,5 +1,5 @@
-use crate::property;
-use crate::props::types::{Property, ToSketchybarArgs};
+use crate::items::Item;
+use anyhow::Result;
 use std::process::Command;
 
 #[derive(Debug, Clone)]
@@ -12,23 +12,25 @@ pub struct Battery {
     pub status: String,
 }
 
-impl ToSketchybarArgs for Battery {
-    fn to_sketchybar_args(&self) -> Vec<Property> {
-        let label = if let Some(percentage) = self.percentage {
-            format!("{}%", percentage)
-        } else {
-            "AC".to_string()
-        };
+impl Item for Battery {
+    fn fetch() -> Result<Self> {
+        Battery::fetch()
+    }
 
-        vec![
-            property!("icon", &self.icon),
-            property!("label", &label),
-            property!("drawing", "on"),
-        ]
+    fn update_items(&self) -> Result<()> {
+        Battery::update_items(self)
+    }
+
+    fn setup(exe_path: &str) -> Result<()> {
+        Battery::setup(exe_path)
     }
 }
 
 impl Battery {
+    pub fn update_command() -> Result<()> {
+        let data = Self::fetch()?;
+        Self::update_items(&data)
+    }
     pub fn fetch() -> anyhow::Result<Self> {
         let sender = std::env::var("SENDER").unwrap_or_default();
         let info = std::env::var("INFO").unwrap_or_default();
@@ -180,83 +182,65 @@ impl Battery {
     pub fn setup(exe_path: &str) -> anyhow::Result<()> {
         let battery_data = Self::fetch()?;
 
-        use crate::api;
-        use crate::props::item::{
-            BackgroundProps, BarItem, ComponentPosition, PopupAlign, PopupProperties, ScriptType,
-        };
+        use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign};
+        use crate::api::types::ToggleState;
         use crate::themes::CATPUCCIN_MOCHA;
 
-        let mut item = BarItem::new("battery".to_string(), ComponentPosition::Right);
-        item.props.geometry.drawing = Some(true);
-        item.props.scripting.update_freq = 60;
-        item.props.scripting.script =
-            Some(ScriptType::String(format!("{} --update-battery", exe_path)));
-        let bg = BackgroundProps {
-            color: Some(CATPUCCIN_MOCHA.surface0.clone()),
-            drawing: Some(true),
-            ..Default::default()
+        let item = BarItem::new("battery")
+            .position(ComponentPosition::Right)
+            .drawing(ToggleState::On)
+            .update_freq(60)
+            .script(&format!("{} --update-battery", exe_path))
+            .click_script("sketchybar --set battery popup.drawing=toggle")
+            .background_color(CATPUCCIN_MOCHA.surface0.clone())
+            .background_drawing(ToggleState::On)
+            .popup_align(PopupAlign::Center)
+            .popup_background_color(CATPUCCIN_MOCHA.base.clone())
+            .popup_background_corner_radius(8)
+            .popup_background_border_width(2)
+            .popup_background_border_color(CATPUCCIN_MOCHA.surface1.clone())
+            .add_item(BarItem::new("battery.status").icon("Status:"))
+            .add_item(BarItem::new("battery.wattage").icon("Power:"))
+            .add_item(BarItem::new("battery.health").icon("Health:"));
+
+        use crate::api::event::BarEvent;
+
+        item.add()?;
+        item.subscribe([BarEvent::SystemWoke, BarEvent::PowerSourceChange])?;
+
+        // Initial update using the data
+        Self::update_items(&battery_data)?;
+
+        Ok(())
+    }
+
+    pub fn update_items(data: &Self) -> anyhow::Result<()> {
+        use crate::api::item::{BarItem, ItemBuilder};
+        use crate::api::types::ToggleState;
+
+        let label = if let Some(percentage) = data.percentage {
+            format!("{}%", percentage)
+        } else {
+            "AC".to_string()
         };
-        item.props.geometry.background = Some(bg);
 
-        let popup_bg = BackgroundProps {
-            color: Some(CATPUCCIN_MOCHA.base.clone()),
-            corner_radius: Some(8),
-            border_width: Some(2),
-            border_color: Some(CATPUCCIN_MOCHA.surface1.clone()),
-            ..Default::default()
-        };
-        let popup_props = PopupProperties {
-            align: PopupAlign::Center,
-            background: Some(popup_bg),
-            ..Default::default()
-        };
-        item.props.popup = Some(popup_props);
-        item.props.scripting.click_script = Some(ScriptType::String(
-            "sketchybar --set battery popup.drawing=toggle".to_string(),
-        ));
+        BarItem::new("battery")
+            .icon(&data.icon)
+            .label(&label)
+            .drawing(ToggleState::On)
+            .set()?;
 
-        api::add_item(&item)?;
-        api::subscribe("battery", ["system_woke", "power_source_change"])?;
-
-        // Popup items
-        let mut status_item = BarItem::new("battery.status".to_string(), ComponentPosition::Right);
-        status_item.props.icon.icon = Some("Status:".to_string());
-        api::add_item(&status_item)?;
-        api::set_args("battery.status", ["position=popup.battery"])?;
-
-        let mut wattage_item =
-            BarItem::new("battery.wattage".to_string(), ComponentPosition::Right);
-        wattage_item.props.icon.icon = Some("Power:".to_string());
-        api::add_item(&wattage_item)?;
-        api::set_args("battery.wattage", ["position=popup.battery"])?;
-
-        let mut health_item = BarItem::new("battery.health".to_string(), ComponentPosition::Right);
-        health_item.props.icon.icon = Some("Health:".to_string());
-        api::add_item(&health_item)?;
-        api::set_args("battery.health", ["position=popup.battery"])?;
-
-        api::set_item("battery", &battery_data)?;
-
-        // Initialize popup items
-        api::set_args(
-            "battery.status",
-            [&format!("label={}", battery_data.status)],
-        )?;
-        api::set_args(
-            "battery.wattage",
-            [&format!(
-                "label={:.1}W",
-                battery_data.wattage.unwrap_or(0.0)
-            )],
-        )?;
-        api::set_args(
-            "battery.health",
-            [&format!(
-                "label={}% ({} cycles)",
-                battery_data.health.unwrap_or(100),
-                battery_data.cycle_count.unwrap_or(0)
-            )],
-        )?;
+        BarItem::new("battery.status").label(&data.status).set()?;
+        BarItem::new("battery.wattage")
+            .label(&format!("{:.1}W", data.wattage.unwrap_or(0.0)))
+            .set()?;
+        BarItem::new("battery.health")
+            .label(&format!(
+                "{}% ({} cycles)",
+                data.health.unwrap_or(100),
+                data.cycle_count.unwrap_or(0)
+            ))
+            .set()?;
 
         Ok(())
     }

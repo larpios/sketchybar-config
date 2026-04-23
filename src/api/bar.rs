@@ -1,4 +1,4 @@
-use crate::props::types::{Argb, Property, SketchyBool, ToSketchybarArgs};
+use crate::api::types::{Argb, Property, SketchyBool, ToSketchybarArgs};
 use std::fmt::Display;
 
 pub struct Bar {

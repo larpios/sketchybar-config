@@ -1,108 +1,33 @@
 use anyhow::{Ok, Result};
 use sketchybarrc::api;
-use sketchybarrc::props::bar::Bar;
-use sketchybarrc::props::bar::BarPosition;
+use sketchybarrc::api::bar::Bar;
+use sketchybarrc::api::bar::BarPosition;
 use sketchybarrc::themes::CATPUCCIN_MOCHA;
 use std::env;
 
-use sketchybarrc::items::{
-    apple, battery, bluetooth, clock, cpu, media, network, volume, weather, workspaces,
-};
+use sketchybarrc::items;
+use sketchybarrc::watcher;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 1 {
-        match args[1].as_str() {
-            "--update-weather" => {
-                let weather_data = weather::Weather::fetch()?;
-                api::set_item("weather", &weather_data)?;
-                return Ok(());
-            }
-            "--update-battery" => {
-                let battery_data = battery::Battery::fetch()?;
-                api::set_item("battery", &battery_data)?;
+        // Handle watcher command
+        if args[1] == "--watcher" {
+            return watcher::watch_media();
+        }
 
-                // Update popups
-                api::set_args(
-                    "battery.status",
-                    [&format!("label={}", battery_data.status)],
-                )?;
-                api::set_args(
-                    "battery.wattage",
-                    [&format!(
-                        "label={:.1}W",
-                        battery_data.wattage.unwrap_or(0.0)
-                    )],
-                )?;
-                api::set_args(
-                    "battery.health",
-                    [&format!(
-                        "label={}% ({} cycles)",
-                        battery_data.health.unwrap_or(100),
-                        battery_data.cycle_count.unwrap_or(0)
-                    )],
-                )?;
-                return Ok(());
-            }
-            "--update-bluetooth" => {
-                return bluetooth::update().await;
-            }
-            "--update-bluetooth-popup" => {
-                return bluetooth::update_popup(false).await;
-            }
-            "--scan-bluetooth" => {
-                return bluetooth::update_popup(true).await;
-            }
-            "--toggle-bluetooth-device" => {
-                if args.len() > 2 {
-                    bluetooth::toggle_device(&args[2]).await?;
-                    return bluetooth::update_popup(false).await;
-                }
-                return Ok(());
-            }
-            "--update-clock" => {
-                let clock_data = clock::Clock::fetch()?;
-                api::set_item("clock", &clock_data)?;
-
-                // Update popups
-                api::set_args("clock.date", [&format!("label={}", clock_data.full_date)])?;
-                api::set_args("clock.utc", [&format!("label={}", clock_data.utc_time)])?;
-
-                return Ok(());
-            }
-            "--update-cpu" => {
-                let cpu_data = cpu::Cpu::fetch()?;
-                api::set_item("cpu", &cpu_data)?;
-                return Ok(());
-            }
-            "--update-network" => {
-                let network_data = network::Network::fetch()?;
-                api::set_item("network", &network_data)?;
-
-                // Set network popup info
-                api::set_args("network.ip", [&format!("label={}", network_data.ip)])?;
-                api::set_args(
-                    "network.device",
-                    [&format!("label={}", network_data.device)],
-                )?;
-                return Ok(());
-            }
-            "--update-workspaces" => {
-                return workspaces::update();
-            }
-            "--update-media" => {
-                return media::update();
-            }
-            "--update-volume" => {
-                return volume::update();
-            }
-            _ => {}
+        // Handle all other commands through registry
+        if items::ItemRegistry::execute(&args[1], &args[2..])
+            .await?
+            .is_some()
+        {
+            return Ok(());
         }
     }
 
-    // Clear bar and items
+    // Initialize bar
     let _ = std::process::Command::new("sketchybar")
         .args(["--bar", "hidden=off"])
         .status();
@@ -148,21 +73,13 @@ async fn main() -> Result<()> {
 
     let exe_path = env::current_exe()?.to_string_lossy().to_string();
 
-    // Left items (added left to right)
-    apple::setup()?;
-    workspaces::setup(&exe_path)?;
+    // Start media watcher in background
+    let _ = std::process::Command::new(&exe_path)
+        .arg("--watcher")
+        .spawn();
 
-    // Center items
-    media::setup(&exe_path)?;
-
-    // Right items (first added is rightmost, so add Clock first, then Volume, etc.)
-    clock::Clock::setup(&exe_path)?;
-    weather::Weather::setup(&exe_path)?;
-    volume::setup(&exe_path)?;
-    battery::Battery::setup(&exe_path)?;
-    network::Network::setup(&exe_path)?;
-    bluetooth::setup(&exe_path).await?;
-    cpu::Cpu::setup(&exe_path)?;
+    // Setup all items
+    items::ItemRegistry::setup_all(&exe_path).await?;
 
     api::update()?;
     api::trigger_evt("workspace_change")?;

@@ -1,7 +1,6 @@
 use crate::api;
-use crate::props::item::{
-    BackgroundProps, BarItem, ComponentPosition, PopupAlign, PopupProperties, ScriptType, Text,
-};
+use crate::api::item::{Argb, BarItem, ComponentPosition, ItemBuilder, PopupAlign, ToggleState};
+use crate::api::types::{Font, FontStyle};
 use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::{Result, anyhow};
 use btleplug::api::{Central, Manager as _, Peripheral, ScanFilter};
@@ -75,42 +74,6 @@ pub async fn fetch_status() -> Result<(bool, Vec<BluetoothDevice>)> {
     Ok((is_on, devices))
 }
 
-pub async fn scan_nearby() -> Result<Vec<BluetoothDevice>> {
-    let manager = Manager::new().await?;
-    let adapters = manager.adapters().await?;
-    let central = adapters
-        .into_iter()
-        .next()
-        .ok_or_else(|| anyhow!("No bluetooth adapter found"))?;
-
-    central.start_scan(ScanFilter::default()).await?;
-    tokio::time::sleep(Duration::from_secs(10)).await;
-
-    let peripherals = central.peripherals().await?;
-    let mut nearby = Vec::new();
-
-    for p in peripherals {
-        let properties = p.properties().await?;
-        if let Some(props) = properties {
-            let name = props
-                .local_name
-                .unwrap_or_else(|| "Unknown Device".to_string());
-            let address = props.address.to_string();
-
-            nearby.push(BluetoothDevice {
-                name,
-                address,
-                connected: p.is_connected().await.unwrap_or(false),
-                is_nearby: true,
-                device_type: None,
-            });
-        }
-    }
-
-    let _ = central.stop_scan().await;
-    Ok(nearby)
-}
-
 pub async fn update() -> Result<()> {
     let (is_on, devices) = fetch_status().await?;
     let connected_count = devices.iter().filter(|d| d.connected).count();
@@ -123,17 +86,15 @@ pub async fn update() -> Result<()> {
         ""
     };
 
-    let mut args = vec![format!("icon={}", icon)];
-    if connected_count > 0 {
-        args.push("icon.highlight=on".to_string());
-        args.push(format!("label={}", connected_count));
-        args.push("label.drawing=on".to_string());
-    } else {
-        args.push("icon.highlight=off".to_string());
-        args.push("label.drawing=off".to_string());
-    }
+    let item = BarItem::new("bluetooth")
+        .icon(icon)
+        .label_drawing(ToggleState::Off)
+        .apply_if(connected_count > 0, |item| {
+            item.label(&format!("{}", connected_count))
+                .label_drawing(ToggleState::On)
+        });
 
-    api::set_args("bluetooth", args)?;
+    item.set()?;
     Ok(())
 }
 
@@ -162,27 +123,18 @@ async fn continuous_scan() -> Result<()> {
     central.start_scan(ScanFilter::default()).await?;
 
     // Show "Searching..." indicator at the top
-    let mut loading = BarItem::new("bluetooth.loading".to_string(), ComponentPosition::Right);
-    loading.props.geometry.position = None;
-    loading.props.icon.icon = Some("󰑐".to_string());
-    loading.props.label.label = Some("Searching for nearby devices...".to_string());
-    loading.props.icon.props = Some(Text {
-        color: Some(CATPUCCIN_MOCHA.yellow.clone()),
-        padding_left: Some(12),
-        ..Default::default()
-    });
+    let loading = BarItem::new("bluetooth.loading")
+        .icon("󰑐")
+        .label("Searching for nearby devices...")
+        .icon_color(CATPUCCIN_MOCHA.yellow.clone())
+        .label_color(CATPUCCIN_MOCHA.subtext0.clone())
+        .label_font(Font {
+            family: "JetBrainsMono Nerd Font".to_string(),
+            style: FontStyle::Italic,
+            size: 11.0,
+        })
+        .width(320);
 
-    let font = crate::props::types::Font {
-        family: "JetBrainsMono Nerd Font".to_string(),
-        style: crate::props::types::FontStyle::Italic,
-        size: 11.0,
-    };
-    loading.props.label.props = Some(Text {
-        color: Some(CATPUCCIN_MOCHA.subtext0.clone()),
-        font: Some(font),
-        ..Default::default()
-    });
-    loading.props.geometry.width = Some(crate::props::item::WidthMode::Value(320));
     api::add_special_item("item", "bluetooth.loading", "popup.bluetooth", &loading)?;
     let _ = Command::new("sketchybar")
         .args(["--set", "bluetooth.loading", "before=/.*/"])
@@ -231,9 +183,7 @@ async fn continuous_scan() -> Result<()> {
 
                 // Animate spinner
                 spinner_idx = (spinner_idx + 1) % spinners.len();
-                let _ = Command::new("sketchybar")
-                    .args(["--set", "bluetooth.loading", &format!("icon={}", spinners[spinner_idx])])
-                    .status();
+                BarItem::new("bluetooth.loading").icon(spinners[spinner_idx]).set()?;
             }
         }
     }
@@ -259,24 +209,22 @@ async fn render_device_list(
         .status();
 
     // MY DEVICES Header
-    let mut paired_header = BarItem::new("".into(), ComponentPosition::Right);
-    paired_header.props.geometry.position = None;
+    let paired_header = BarItem::new("bluetooth.section.paired")
+        .label("MY DEVICES")
+        .label_color(CATPUCCIN_MOCHA.overlay1.clone())
+        .label_font(Font {
+            family: "JetBrainsMono Nerd Font".into(),
+            style: FontStyle::Bold,
+            size: 10.0,
+        })
+        .padding_left(12)
+        .width(320);
+
     api::add_special_item(
         "item",
         "bluetooth.section.paired",
         "popup.bluetooth",
         &paired_header,
-    )?;
-    api::set_args(
-        "bluetooth.section.paired",
-        [
-            "label=MY DEVICES",
-            "icon.drawing=off",
-            &format!("label.color={}", CATPUCCIN_MOCHA.overlay1),
-            "label.font=JetBrainsMono Nerd Font:Bold:10.0",
-            "padding_left=12",
-            "width=320",
-        ],
     )?;
 
     for device in paired {
@@ -295,25 +243,22 @@ async fn render_device_list(
 }
 
 async fn render_nearby_header() -> Result<()> {
-    let mut nearby_header = BarItem::new("".into(), ComponentPosition::Right);
-    nearby_header.props.geometry.position = None;
+    let nearby_header = BarItem::new("bluetooth.section.nearby")
+        .label("NEARBY DEVICES")
+        .label_color(CATPUCCIN_MOCHA.overlay1.clone())
+        .label_font(Font {
+            family: "JetBrainsMono Nerd Font".into(),
+            style: FontStyle::Bold,
+            size: 10.0,
+        })
+        .padding_left(12)
+        .width(320);
+
     api::add_special_item(
         "item",
         "bluetooth.section.nearby",
         "popup.bluetooth",
         &nearby_header,
-    )?;
-    api::set_args(
-        "bluetooth.section.nearby",
-        [
-            "label=NEARBY DEVICES",
-            "icon.drawing=off",
-            &format!("label.color={}", CATPUCCIN_MOCHA.overlay1),
-            "label.font=JetBrainsMono Nerd Font:Bold:10.0",
-            "padding_left=12",
-            "padding_top=10",
-            "width=320",
-        ],
     )?;
     Ok(())
 }
@@ -327,9 +272,6 @@ async fn render_single_device(device: BluetoothDevice, is_paired: bool) -> Resul
     if !is_paired {
         let _ = render_nearby_header().await;
     }
-
-    let mut item = BarItem::new(name.clone(), ComponentPosition::Right);
-    item.props.geometry.position = None;
 
     let icon = if device.connected {
         "󰂱"
@@ -349,8 +291,6 @@ async fn render_single_device(device: BluetoothDevice, is_paired: bool) -> Resul
         }
     };
 
-    item.props.icon.icon = Some(icon.to_string());
-
     let icon_color = if device.connected {
         CATPUCCIN_MOCHA.blue.clone()
     } else if device.is_nearby {
@@ -358,12 +298,6 @@ async fn render_single_device(device: BluetoothDevice, is_paired: bool) -> Resul
     } else {
         CATPUCCIN_MOCHA.overlay0.clone()
     };
-
-    item.props.icon.props = Some(Text {
-        color: Some(icon_color),
-        padding_left: Some(12),
-        ..Default::default()
-    });
 
     let status_text = if device.connected {
         "Connected"
@@ -379,43 +313,24 @@ async fn render_single_device(device: BluetoothDevice, is_paired: bool) -> Resul
         CATPUCCIN_MOCHA.overlay2.clone()
     };
 
-    item.props.label.props = Some(Text {
-        color: Some(label_color),
-        padding_right: Some(12),
-        width: Some(crate::props::item::WidthMode::Value(260)),
-        ..Default::default()
-    });
-
-    item.props.label.label = Some(format!("{} | {}", device.name, status_text));
-
-    item.props.geometry.width = Some(crate::props::item::WidthMode::Value(320));
-    item.props.geometry.background = Some(BackgroundProps {
-        color: Some(CATPUCCIN_MOCHA.transparent.clone()),
-        height: Some(36),
-        ..Default::default()
-    });
-
-    item.props.scripting.click_script = Some(ScriptType::String(format!(
-        "{} --toggle-bluetooth-device {}",
-        exe_path, device.address
-    )));
-
-    api::add_special_item("item", &name, "popup.bluetooth", &item)?;
-
     let click_script = format!(
-        "sketchybar --set $NAME background.highlight=on; sleep 0.1; sketchybar --set $NAME background.highlight=off; {}",
-        item.props.scripting.click_script.unwrap()
+        "sketchybar --set $NAME background.highlight=on; sleep 0.1; sketchybar --set $NAME background.highlight=off; {} --toggle-bluetooth-device {}",
+        exe_path, device.address
     );
 
-    api::set_args(
-        &name,
-        [
-            &format!("background.highlight_color={}", CATPUCCIN_MOCHA.surface0),
-            &format!("click_script={}", click_script),
-            "background.corner_radius=8",
-            "background.drawing=on",
-        ],
-    )?;
+    let item = BarItem::new(&name)
+        .icon(icon)
+        .icon_color(icon_color)
+        .label(&format!("{} | {}", device.name, status_text))
+        .label_color(label_color)
+        .width(320)
+        .background_color(CATPUCCIN_MOCHA.transparent.clone())
+        .background_height(36)
+        .background_drawing(ToggleState::On)
+        .background_corner_radius(8)
+        .click_script(&click_script);
+
+    api::add_special_item("item", &name, "popup.bluetooth", &item)?;
 
     Ok(())
 }
@@ -425,14 +340,10 @@ pub async fn toggle_device(address: &str) -> Result<()> {
     let sanitized_address = address.replace([':', '-'], "");
     let item_name = format!("bluetooth.device.{}", sanitized_address);
 
-    let _ = Command::new("sketchybar")
-        .args([
-            "--set",
-            &item_name,
-            "label.color=0xfffab387",
-            "label=Processing...",
-        ])
-        .status();
+    BarItem::new(&item_name)
+        .label_color(Argb::from_u32(0xfffab387))
+        .label("Processing...")
+        .set()?;
 
     let swift_script = format!(
         r#"
@@ -455,45 +366,26 @@ if device.isConnected() {{ device.closeConnection() }} else {{ device.openConnec
 }
 
 pub async fn setup(exe_path: &str) -> Result<()> {
-    let mut item = BarItem::new("bluetooth".to_string(), ComponentPosition::Right);
-    item.props.scripting.update_freq = 5;
-    item.props.scripting.script = Some(ScriptType::String(format!(
-        "{} --update-bluetooth",
-        exe_path
-    )));
-    item.props.scripting.click_script = Some(ScriptType::String(format!(
-        "sketchybar --set bluetooth popup.drawing=toggle; {} --scan-bluetooth",
-        exe_path
-    )));
-    item.props.icon.icon = Some("".to_string());
-    item.props.icon.props = Some(Text {
-        color: Some(CATPUCCIN_MOCHA.blue.clone()),
-        ..Default::default()
-    });
-    item.props.label.props = Some(Text {
-        drawing: Some(false),
-        ..Default::default()
-    });
-    item.props.geometry.background = Some(BackgroundProps {
-        color: Some(CATPUCCIN_MOCHA.surface0.clone()),
-        drawing: Some(true),
-        ..Default::default()
-    });
+    let item = BarItem::new("bluetooth")
+        .position(ComponentPosition::Right)
+        .update_freq(5)
+        .script(&format!("{} --update-bluetooth", exe_path))
+        .click_script(&format!(
+            "sketchybar --set bluetooth popup.drawing=toggle; {} --scan-bluetooth",
+            exe_path
+        ))
+        .icon("")
+        .icon_color(CATPUCCIN_MOCHA.blue.clone())
+        .label_drawing(ToggleState::Off)
+        .background_color(CATPUCCIN_MOCHA.surface0.clone())
+        .background_drawing(ToggleState::On)
+        .popup_align(PopupAlign::Center)
+        .popup_background_color(CATPUCCIN_MOCHA.base.clone())
+        .popup_background_border_color(CATPUCCIN_MOCHA.surface1.clone())
+        .popup_background_border_width(2)
+        .popup_background_corner_radius(12);
 
-    let popup_bg = BackgroundProps {
-        color: Some(CATPUCCIN_MOCHA.base.clone()),
-        border_color: Some(CATPUCCIN_MOCHA.surface1.clone()),
-        border_width: Some(2),
-        corner_radius: Some(12),
-        ..Default::default()
-    };
-    item.props.popup = Some(PopupProperties {
-        align: PopupAlign::Center,
-        background: Some(popup_bg),
-        ..Default::default()
-    });
-
-    api::add_item(&item)?;
+    item.add()?;
 
     update_popup(false).await?;
     Ok(())

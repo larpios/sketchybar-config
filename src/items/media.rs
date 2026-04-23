@@ -1,285 +1,364 @@
-use crate::api;
-use crate::props::item::{
-    BackgroundProps, BarItem, ComponentPosition, ImageProps, ImageType, ScriptType, Text,
+use crate::api::event::BarEvent;
+use crate::api::item::{
+    BarItem, ComponentPosition, ImageType, ItemBuilder, PopupAlign, TextAlignment, ToggleState,
 };
+use crate::api::types::{Argb, Font, FontStyle};
+use crate::api::{self};
+use crate::media_ffi::{self, MediaRemoteCommand};
+use crate::path::data_dir;
 use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::Result;
-use media_remote::{Controller, NowPlaying, NowPlayingPerl};
+use media_remote::{NowPlaying, NowPlayingPerl};
 use std::env;
-use std::process::Command;
+
+#[derive(Debug, Clone, Default)]
+pub struct Media {
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub duration: f64,
+    pub elapsed_time: f64,
+    pub playback_rate: f64,
+    pub timestamp: Option<f64>,
+    pub has_artwork: bool,
+    pub artwork_path: String,
+}
+
+impl Media {
+    pub fn fetch() -> Result<Self> {
+        // 1. Try custom FFI
+        if let Some(info) = media_ffi::get_now_playing_info()
+            && (info.title.is_some() || info.artist.is_some())
+        {
+            return Self::from_ffi_info(&info);
+        }
+
+        // 2. Try media-remote crate (Native)
+        let now_playing = NowPlaying::new();
+        if let Some(info) = &*now_playing.get_info()
+            && (info.title.is_some() || info.artist.is_some())
+        {
+            return Self::from_crate_info(info);
+        }
+
+        // 3. Try media-remote crate (Perl fallback)
+        let perl = NowPlayingPerl::new();
+        if let Some(info) = &*perl.get_info()
+            && (info.title.is_some() || info.artist.is_some())
+        {
+            return Self::from_crate_info(info);
+        }
+
+        Ok(Self::default())
+    }
+
+    fn from_ffi_info(info: &media_ffi::NowPlayingInfo) -> Result<Self> {
+        let artwork_path = data_dir().join("media.png");
+        let mut has_artwork = false;
+
+        if let Some(data) = &info.artwork_data {
+            if std::fs::write(&artwork_path, data).is_ok() {
+                has_artwork = true;
+            }
+        } else if artwork_path.exists() {
+            has_artwork = true;
+        }
+
+        Ok(Self {
+            title: info.title.clone().unwrap_or_else(|| "Unknown".into()),
+            artist: info.artist.clone().unwrap_or_else(|| "Unknown".into()),
+            album: info.album.clone().unwrap_or_default(),
+            duration: info.duration.unwrap_or(0.0),
+            elapsed_time: info.elapsed_time.unwrap_or(0.0),
+            playback_rate: info.playback_rate.unwrap_or(0.0),
+            timestamp: info.timestamp,
+            has_artwork,
+            artwork_path: artwork_path.to_string_lossy().into(),
+        })
+    }
+
+    fn from_crate_info(info: &media_remote::NowPlayingInfo) -> Result<Self> {
+        let artwork_path = data_dir().join("media.png");
+        let mut has_artwork = false;
+
+        if let Some(image) = &info.album_cover
+            && image.save(&artwork_path).is_ok()
+        {
+            has_artwork = true;
+        }
+
+        let timestamp = info.info_update_time.and_then(|t| {
+            t.duration_since(std::time::UNIX_EPOCH)
+                .ok()
+                .map(|d| d.as_secs_f64() - 978_307_200.0)
+        });
+
+        Ok(Self {
+            title: info.title.clone().unwrap_or_else(|| "Unknown".into()),
+            artist: info.artist.clone().unwrap_or_else(|| "Unknown".into()),
+            album: info.album.clone().unwrap_or_default(),
+            duration: info.duration.unwrap_or(0.0),
+            elapsed_time: info.elapsed_time.unwrap_or(0.0),
+            playback_rate: info
+                .is_playing
+                .map(|p| if p { 1.0 } else { 0.0 })
+                .unwrap_or(0.0),
+            timestamp,
+            has_artwork,
+            artwork_path: artwork_path.to_string_lossy().into(),
+        })
+    }
+
+    pub fn formatted_progress(&self) -> String {
+        let mut elapsed = self.elapsed_time;
+        let is_playing = self.playback_rate > 0.0;
+
+        if is_playing && let Some(timestamp) = self.timestamp {
+            let now_unix = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs_f64();
+            let apple_reference_date_offset = 978_307_200.0;
+            let timestamp_unix = timestamp + apple_reference_date_offset;
+            let diff = now_unix - timestamp_unix;
+            if diff > 0.0 && diff < 3600.0 {
+                elapsed += diff * self.playback_rate;
+            }
+        }
+
+        format!("{} / {}", format_time(elapsed), format_time(self.duration))
+    }
+}
+
+pub fn update_command() -> Result<()> {
+    update()
+}
 
 pub fn update() -> Result<()> {
     let name = env::var("NAME").unwrap_or_else(|_| "".to_string());
     let sender = env::var("SENDER").unwrap_or_else(|_| "".to_string());
 
     if sender == "mouse.clicked" {
-        let now_playing = NowPlaying::new();
         match name.as_str() {
             "media.prev" => {
-                now_playing.previous();
+                media_ffi::send_command(MediaRemoteCommand::PreviousTrack);
             }
             "media.next" => {
-                now_playing.next();
+                media_ffi::send_command(MediaRemoteCommand::NextTrack);
             }
             "media.play" => {
-                now_playing.toggle();
+                media_ffi::send_command(MediaRemoteCommand::TogglePlayPause);
             }
             _ => {}
         }
-        // Small delay to let system update
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
-    let now_playing = NowPlaying::new();
-    let info_guard = now_playing.get_info();
+    let data = Media::fetch()?;
 
-    if let Some(info) = &*info_guard {
-        return update_with_info(info);
-    }
-
-    // Fallback to Perl adapter if needed
-    let perl = NowPlayingPerl::new();
-    let perl_guard = perl.get_info();
-    if let Some(info) = &*perl_guard {
-        return update_with_info(info);
-    }
-
-    // If both fail or no info
-    api::set_args("media", ["drawing=off"])?;
-    Ok(())
-}
-
-fn update_with_info(info: &media_remote::NowPlayingInfo) -> Result<()> {
-    let title = info.title.as_deref().unwrap_or_default();
-    let artist = info.artist.as_deref().unwrap_or_default();
-    let is_playing = info.is_playing.unwrap_or(false);
-
-    if title.is_empty() {
-        api::set_args("media", ["drawing=off"])?;
+    // Main item
+    if data.title.is_empty() && data.artist.is_empty() {
+        BarItem::new("media").drawing(ToggleState::Off).set()?;
         return Ok(());
     }
 
-    let track_info = if artist.is_empty() {
-        title.to_string()
+    let track_info = if data.artist.is_empty() {
+        data.title.clone()
+    } else if data.title.is_empty() {
+        data.artist.clone()
     } else {
-        format!("{} - {}", artist, title)
+        format!("{} - {}", data.artist, data.title)
     };
 
-    // Handle Artwork
-    let mut has_artwork = false;
-    if let Some(image) = &info.album_cover
-        && image.save("/tmp/sketchybar_artwork.png").is_ok()
-    {
-        has_artwork = true;
-    }
-
-    // Update main label (bar item)
-    let mut display_text = track_info.to_string();
+    let mut display_text = track_info;
     if display_text.len() > 25 {
         display_text.truncate(22);
         display_text.push_str("...");
     }
 
-    let mut args = vec!["drawing=on".to_string(), format!("label={}", display_text)];
+    let mut media_item = BarItem::new("media")
+        .drawing(ToggleState::On)
+        .label(&display_text)
+        .label_drawing(ToggleState::On)
+        .icon_drawing(ToggleState::On);
 
-    if has_artwork {
-        args.push("background.image=/tmp/sketchybar_artwork.png".to_string());
-        args.push("background.image.drawing=on".to_string());
+    if data.has_artwork {
+        media_item = media_item
+            .background_image(ImageType::Path(data.artwork_path.clone()))
+            .background_image_drawing(ToggleState::On)
+            .background_image_blur_radius(20)
+            .background_image_scale(0.15);
     } else {
-        args.push("background.image.drawing=off".to_string());
+        media_item = media_item.background_image_drawing(ToggleState::Off);
+    }
+    media_item.set()?;
+
+    // Popups
+    if data.has_artwork {
+        BarItem::new("media")
+            .popup_background_image(ImageType::Path(data.artwork_path.clone()))
+            .popup_background_image_blur_radius(50)
+            .popup_background_image_drawing(ToggleState::On)
+            .set()?;
+
+        BarItem::new("media.cover")
+            .background_image(ImageType::Path(data.artwork_path.clone()))
+            .background_image_drawing(ToggleState::On)
+            .drawing(ToggleState::On)
+            .set()?;
+    } else {
+        BarItem::new("media.cover")
+            .drawing(ToggleState::Off)
+            .set()?;
+        BarItem::new("media")
+            .popup_background_image_drawing(ToggleState::Off)
+            .set()?;
     }
 
-    api::set_args(
-        "media",
-        args.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
-    )?;
+    BarItem::new("media.title").label(&data.title).set()?;
+    BarItem::new("media.artist").label(&data.artist).set()?;
+    BarItem::new("media.progress")
+        .label(&data.formatted_progress())
+        .set()?;
 
-    // Update popup items
-    if has_artwork {
-        api::set_args(
-            "media.cover",
-            ["background.image=/tmp/sketchybar_artwork.png", "drawing=on"],
-        )?;
+    let play_icon = if data.playback_rate > 0.0 {
+        "󰏤"
     } else {
-        api::set_args("media.cover", ["drawing=off"])?;
-    }
-
-    api::set_args("media.title", [&format!("label={}", title)])?;
-    api::set_args("media.artist", [&format!("label={}", artist)])?;
-
-    let play_icon = if is_playing { "󰏤" } else { "󰐎" };
-    api::set_args("media.play", [&format!("icon={}", play_icon)])?;
+        "󰐎"
+    };
+    BarItem::new("media.play").icon(play_icon).set()?;
 
     Ok(())
 }
 
+fn format_time(seconds: f64) -> String {
+    let total_seconds = seconds as u64;
+    let minutes = total_seconds / 60;
+    let seconds = total_seconds % 60;
+    format!("{:02}:{:02}", minutes, seconds)
+}
+
 pub fn setup(exe_path: &str) -> Result<()> {
-    let mut item = BarItem::new("media".to_string(), ComponentPosition::Left);
-    item.props.scripting.update_freq = 2;
-    item.props.scripting.script = Some(ScriptType::String(format!("{} --update-media", exe_path)));
-    item.props.scripting.click_script = Some(ScriptType::String(
-        "sketchybar --set media popup.drawing=toggle".to_string(),
-    ));
+    let item = BarItem::new("media")
+        .position(ComponentPosition::Left)
+        .update_freq(0)
+        .script(&format!("{} --update-media", exe_path))
+        .click_script("sketchybar --set media popup.drawing=toggle")
+        .icon("󰎆")
+        .icon_color(CATPUCCIN_MOCHA.green.clone())
+        .background_color(CATPUCCIN_MOCHA.surface0.clone())
+        .background_drawing(ToggleState::On)
+        .background_image(ImageType::Path(
+            data_dir().join("media.png").to_str().unwrap().to_string(),
+        ))
+        .background_image_drawing(ToggleState::On)
+        .background_image_scale(0.15)
+        .background_image_corner_radius(4)
+        .padding_left(10)
+        .padding_right(10)
+        .popup_align(PopupAlign::Center)
+        .popup_background_color(CATPUCCIN_MOCHA.base.clone())
+        .popup_background_corner_radius(12)
+        .popup_background_border_width(2)
+        .popup_background_border_color(CATPUCCIN_MOCHA.surface1.clone())
+        .add_item(
+            BarItem::new("media.cover")
+                .background_image(ImageType::MediaArtwork)
+                .background_image_drawing(ToggleState::On)
+                .background_image_scale(0.5)
+                .background_image_corner_radius(12)
+                .background_height(140)
+                .padding_left(10)
+                .padding_right(10)
+                .width(240)
+                .text_align(TextAlignment::Center),
+        )
+        .add_item(
+            BarItem::new("media.title")
+                .label_font(Font {
+                    family: "JetBrainsMono Nerd Font".to_string(),
+                    size: 16.0,
+                    style: FontStyle::Bold,
+                })
+                .width(240)
+                .text_align(TextAlignment::Center),
+        )
+        .add_item(
+            BarItem::new("media.artist")
+                .label_font(Font {
+                    family: "JetBrainsMono Nerd Font".to_string(),
+                    size: 13.0,
+                    style: FontStyle::Regular,
+                })
+                .label_color(Argb::from_u32(0xffbac2de))
+                .width(240)
+                .text_align(TextAlignment::Center),
+        )
+        .add_item(
+            BarItem::new("media.progress")
+                .label_font(Font {
+                    family: "JetBrainsMono Nerd Font".to_string(),
+                    size: 12.0,
+                    style: FontStyle::Regular,
+                })
+                .width(240)
+                .text_align(TextAlignment::Center),
+        )
+        .add_item(
+            BarItem::new("media.prev")
+                .icon("󰒮")
+                .icon_font(Font {
+                    family: "JetBrainsMono Nerd Font".to_string(),
+                    size: 20.0,
+                    style: FontStyle::Regular,
+                })
+                .width(80)
+                .text_align(TextAlignment::Center)
+                .click_script(&format!("{} --update-media", exe_path)),
+        )
+        .add_item(
+            BarItem::new("media.play")
+                .icon("󰐎")
+                .icon_font(Font {
+                    family: "JetBrainsMono Nerd Font".to_string(),
+                    size: 24.0,
+                    style: FontStyle::Regular,
+                })
+                .width(80)
+                .text_align(TextAlignment::Center)
+                .y_offset(-32)
+                .click_script(&format!("{} --update-media", exe_path)),
+        )
+        .add_item(
+            BarItem::new("media.next")
+                .icon("󰒭")
+                .icon_font(Font {
+                    family: "JetBrainsMono Nerd Font".to_string(),
+                    size: 20.0,
+                    style: FontStyle::Regular,
+                })
+                .width(80)
+                .text_align(TextAlignment::Center)
+                .y_offset(-32)
+                .click_script(&format!("{} --update-media", exe_path)),
+        );
 
-    item.props.icon.icon = Some("󰎆".to_string());
-    let icon_props = Text {
-        color: Some(CATPUCCIN_MOCHA.green.clone()),
-        ..Default::default()
-    };
-    item.props.icon.props = Some(icon_props);
-
-    let mut image_props =
-        ImageProps::new(ImageType::Path("/tmp/sketchybar_artwork.png".to_string()));
-    image_props.drawing = false;
-    image_props.scale = 0.15;
-    image_props.corner_radius = 4;
-    image_props.padding_right = 5;
-
-    let bg = BackgroundProps {
-        color: Some(CATPUCCIN_MOCHA.surface0.clone()),
-        drawing: Some(true),
-        image: Some(image_props),
-        ..Default::default()
-    };
-    item.props.geometry.background = Some(bg);
-
-    item.props.geometry.padding_left = Some(10);
-    item.props.geometry.padding_right = Some(10);
-
-    // Popup setup
-    let popup_bg = BackgroundProps {
-        color: Some(CATPUCCIN_MOCHA.base.clone()),
-        corner_radius: Some(12),
-        border_width: Some(2),
-        border_color: Some(CATPUCCIN_MOCHA.surface1.clone()),
-        ..Default::default()
-    };
-    let popup_props = crate::props::item::PopupProperties {
-        align: crate::props::item::PopupAlign::Center,
-        background: Some(popup_bg),
-        ..Default::default()
-    };
-    item.props.popup = Some(popup_props);
-
-    api::add_item(&item)?;
-
-    // 1. Cover
-    Command::new("sketchybar")
-        .args([
-            "--add",
-            "item",
-            "media.cover",
-            "popup.media",
-            "--set",
-            "media.cover",
-            "background.image.scale=0.6",
-            "background.image.corner_radius=12",
-            "background.image.drawing=on",
-            "background.image.blur_radius=30",
-            "width=240",
-            "height=160",
-            "align=center",
-        ])
-        .status()?;
-
-    // 2. Title and Artist
-    Command::new("sketchybar")
-        .args([
-            "--add",
-            "item",
-            "media.title",
-            "popup.media",
-            "--set",
-            "media.title",
-            "label.font=JetBrainsMono Nerd Font:Bold:16.0",
-            "width=240",
-            "align=center",
-            "label.padding_left=0",
-            "label.padding_right=0",
-        ])
-        .status()?;
-
-    Command::new("sketchybar")
-        .args([
-            "--add",
-            "item",
-            "media.artist",
-            "popup.media",
-            "--set",
-            "media.artist",
-            "label.font=JetBrainsMono Nerd Font:Regular:13.0",
-            "label.color=0xffbac2de",
-            "width=240",
-            "align=center",
-            "label.padding_left=0",
-            "label.padding_right=0",
-        ])
-        .status()?;
-
-    // 3. Horizontal Controls
-    Command::new("sketchybar")
-        .args([
-            "--add",
-            "item",
-            "media.prev",
-            "popup.media",
-            "--set",
-            "media.prev",
-            "icon=󰒮",
-            "icon.font=JetBrainsMono Nerd Font:Regular:20.0",
-            "width=60",
-            "align=center",
-            &format!("click_script={} --update-media", exe_path),
-        ])
-        .status()?;
-
-    Command::new("sketchybar")
-        .args([
-            "--add",
-            "item",
-            "media.play",
-            "popup.media",
-            "--set",
-            "media.play",
-            "icon=󰐎",
-            "icon.font=JetBrainsMono Nerd Font:Regular:24.0",
-            "width=60",
-            "align=center",
-            &format!("click_script={} --update-media", exe_path),
-        ])
-        .status()?;
-
-    Command::new("sketchybar")
-        .args([
-            "--add",
-            "item",
-            "media.next",
-            "popup.media",
-            "--set",
-            "media.next",
-            "icon=󰒭",
-            "icon.font=JetBrainsMono Nerd Font:Regular:20.0",
-            "width=60",
-            "align=center",
-            &format!("click_script={} --update-media", exe_path),
-        ])
-        .status()?;
-
-    Command::new("sketchybar")
-        .args([
-            "--add",
-            "bracket",
-            "media.controls",
-            "media.prev",
-            "media.play",
-            "media.next",
-            "--set",
-            "media.controls",
-            "background.drawing=on",
-            "background.color=0x22ffffff",
-            "background.corner_radius=8",
-        ])
-        .status()?;
+    api::add_event("media_update")?;
+    item.add()?;
+    item.subscribe([BarEvent::from("media_update"), BarEvent::MouseClicked])?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_time() {
+        assert_eq!(format_time(0.0), "00:00");
+        assert_eq!(format_time(60.0), "01:00");
+        assert_eq!(format_time(65.0), "01:05");
+        assert_eq!(format_time(3600.0), "60:00");
+    }
 }
