@@ -43,7 +43,7 @@ impl Weather {
         use crate::themes::CATPUCCIN_MOCHA;
 
         let mut item = BarItem::new("weather".to_string(), ComponentPosition::Right);
-        item.props.scripting.update_freq = 1800;
+        item.props.scripting.update_freq = 300;
         item.props.scripting.script =
             Some(ScriptType::String(format!("{} --update-weather", exe_path)));
         item.props.scripting.click_script =
