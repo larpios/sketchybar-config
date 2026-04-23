@@ -30,6 +30,9 @@ impl ToSketchybarArgs for Battery {
 
 impl Battery {
     pub fn fetch() -> anyhow::Result<Self> {
+        let sender = std::env::var("SENDER").unwrap_or_default();
+        let info = std::env::var("INFO").unwrap_or_default();
+
         let output = Command::new("pmset").args(["-g", "batt"]).output()?;
         let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -108,6 +111,15 @@ impl Battery {
             }
         }
 
+        // Handle power_source_change event info
+        if sender == "power_source_change" {
+            if info == "AC" {
+                status = "Charging".to_string();
+            } else if info == "Battery" {
+                status = "Discharging".to_string();
+            }
+        }
+
         // If no wattage from ioreg (maybe on AC), try pmset -g adapter
         if wattage.is_none() || wattage == Some(0.0) {
             let adapter_output = Command::new("pmset").args(["-g", "adapter"]).output()?;
@@ -120,15 +132,40 @@ impl Battery {
             }
         }
 
+        let is_charging = status == "Charging" || status == "AC Power";
         let icon = match percentage {
-            Some(p) if p > 80 => "",
-            Some(p) if p > 50 => "",
-            Some(p) if p > 30 => "",
-            Some(p) if p > 10 => "",
-            Some(_) => "",
-            None => "",
-        }
-        .to_string();
+            Some(p) => if is_charging {
+                match p {
+                    p if p > 95 => "󰂅",
+                    p if p > 90 => "󰂋",
+                    p if p > 80 => "󰂊",
+                    p if p > 70 => "󰢞",
+                    p if p > 60 => "󰂉",
+                    p if p > 50 => "󰢝",
+                    p if p > 40 => "󰂈",
+                    p if p > 30 => "󰂇",
+                    p if p > 20 => "󰂆",
+                    p if p > 10 => "󰢜",
+                    _ => "󰢟",
+                }
+            } else {
+                match p {
+                    p if p > 95 => "󰁹",
+                    p if p > 90 => "󰂂",
+                    p if p > 80 => "󰂁",
+                    p if p > 70 => "󰂀",
+                    p if p > 60 => "󰁿",
+                    p if p > 50 => "󰁾",
+                    p if p > 40 => "󰁽",
+                    p if p > 30 => "󰁼",
+                    p if p > 20 => "󰁻",
+                    p if p > 10 => "󰁺",
+                    _ => "󰂎",
+                }
+            }
+            .to_string(),
+            None => "".to_string(),
+        };
 
         Ok(Self {
             percentage,
@@ -179,6 +216,7 @@ impl Battery {
         ));
 
         api::add_item(&item)?;
+        api::subscribe("battery", ["system_woke", "power_source_change"])?;
 
         // Popup items
         let mut status_item = BarItem::new("battery.status".to_string(), ComponentPosition::Right);
