@@ -1,46 +1,21 @@
 {
   inputs = {
-    flake-utils.url = "github:numtide/flake-utils";
-    naersk.url = "github:nix-community/naersk";
+    naersk.url = "github:nix-community/naersk/master";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    fenix.url = "github:nix-community/fenix";
+    utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = {
-    self,
-    flake-utils,
-    naersk,
-    nixpkgs,
-    fenix,
-  }:
-    flake-utils.lib.eachDefaultSystem (
-      system: let
-        pkgs = (import nixpkgs) {
-          inherit system;
-          overlays = [fenix.overlays.default];
-        };
-
-        inherit (pkgs) lib stdenv;
-
-        naersk' = pkgs.callPackage naersk {};
-      in {
-        defaultPackage = naersk'.buildPackage {
-          src = ./.;
-        };
-
-        devShell = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [
-            alejandra
-            rust-analyzer
-            (pkgs.fenix.stable.withComponents [
-              "cargo"
-              "clippy"
-              "rust-src"
-              "rustc"
-              "rustfmt"
-            ])
-          ];
-          env.RUSTFLAGS = lib.optionalString stdenv.isDarwin "-L ${pkgs.apple-sdk.sdkroot}/usr/lib";
+  outputs = { self, nixpkgs, utils, naersk }:
+    utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+        naersk-lib = pkgs.callPackage naersk { };
+      in
+      {
+        defaultPackage = naersk-lib.buildPackage ./.;
+        devShell = with pkgs; mkShell {
+          buildInputs = [ cargo rustc rustfmt pre-commit rustPackages.clippy ];
+          RUST_SRC_PATH = rustPlatform.rustLibSrc;
         };
       }
     );
