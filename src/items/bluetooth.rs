@@ -126,8 +126,8 @@ async fn continuous_scan() -> Result<()> {
     let loading = BarItem::new("bluetooth.loading")
         .icon("󰑐")
         .label("Searching for nearby devices...")
-        .icon_color(CATPUCCIN_MOCHA.yellow.clone())
-        .label_color(CATPUCCIN_MOCHA.subtext0.clone())
+        .icon_color(CATPUCCIN_MOCHA.yellow)
+        .label_color(CATPUCCIN_MOCHA.subtext0)
         .label_font(Font {
             family: "JetBrainsMono Nerd Font".to_string(),
             style: FontStyle::Italic,
@@ -211,7 +211,7 @@ async fn render_device_list(
     // MY DEVICES Header
     let paired_header = BarItem::new("bluetooth.section.paired")
         .label("MY DEVICES")
-        .label_color(CATPUCCIN_MOCHA.overlay1.clone())
+        .label_color(CATPUCCIN_MOCHA.overlay1)
         .label_font(Font {
             family: "JetBrainsMono Nerd Font".into(),
             style: FontStyle::Bold,
@@ -245,7 +245,7 @@ async fn render_device_list(
 async fn render_nearby_header() -> Result<()> {
     let nearby_header = BarItem::new("bluetooth.section.nearby")
         .label("NEARBY DEVICES")
-        .label_color(CATPUCCIN_MOCHA.overlay1.clone())
+        .label_color(CATPUCCIN_MOCHA.overlay1)
         .label_font(Font {
             family: "JetBrainsMono Nerd Font".into(),
             style: FontStyle::Bold,
@@ -292,11 +292,11 @@ async fn render_single_device(device: BluetoothDevice, is_paired: bool) -> Resul
     };
 
     let icon_color = if device.connected {
-        CATPUCCIN_MOCHA.blue.clone()
+        CATPUCCIN_MOCHA.blue
     } else if device.is_nearby {
-        CATPUCCIN_MOCHA.yellow.clone()
+        CATPUCCIN_MOCHA.yellow
     } else {
-        CATPUCCIN_MOCHA.overlay0.clone()
+        CATPUCCIN_MOCHA.overlay0
     };
 
     let status_text = if device.connected {
@@ -308,9 +308,9 @@ async fn render_single_device(device: BluetoothDevice, is_paired: bool) -> Resul
     };
 
     let label_color = if device.connected {
-        CATPUCCIN_MOCHA.text.clone()
+        CATPUCCIN_MOCHA.text
     } else {
-        CATPUCCIN_MOCHA.overlay2.clone()
+        CATPUCCIN_MOCHA.overlay2
     };
 
     let click_script = format!(
@@ -324,7 +324,7 @@ async fn render_single_device(device: BluetoothDevice, is_paired: bool) -> Resul
         .label(&format!("{} | {}", device.name, status_text))
         .label_color(label_color)
         .width(320)
-        .background_color(CATPUCCIN_MOCHA.transparent.clone())
+        .background_color(CATPUCCIN_MOCHA.transparent)
         .background_height(36)
         .background_drawing(ToggleState::On)
         .background_corner_radius(8)
@@ -375,13 +375,13 @@ pub async fn setup(exe_path: &str) -> Result<()> {
             exe_path
         ))
         .icon("")
-        .icon_color(CATPUCCIN_MOCHA.blue.clone())
+        .icon_color(CATPUCCIN_MOCHA.blue)
         .label_drawing(ToggleState::Off)
-        .background_color(CATPUCCIN_MOCHA.surface0.clone())
+        .background_color(CATPUCCIN_MOCHA.surface0)
         .background_drawing(ToggleState::On)
         .popup_align(PopupAlign::Center)
-        .popup_background_color(CATPUCCIN_MOCHA.base.clone())
-        .popup_background_border_color(CATPUCCIN_MOCHA.surface1.clone())
+        .popup_background_color(CATPUCCIN_MOCHA.base)
+        .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
         .popup_background_border_width(2)
         .popup_background_corner_radius(12);
 

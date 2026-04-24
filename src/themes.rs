@@ -7,6 +7,18 @@ macro_rules! theme {
         pub static $name: LazyLock<Theme> = LazyLock::new(|| $theme);
     };
 }
+
+pub fn set_alpha(color: Argb, alpha: f32) -> Argb {
+    assert!((0.0..=1.0).contains(&alpha));
+
+    Argb {
+        a: (alpha * 255.0) as u8,
+        r: color.r,
+        g: color.g,
+        b: color.b,
+    }
+}
+
 pub struct Theme {
     pub rosewater: Argb,
     pub flamingo: Argb,
@@ -35,7 +47,6 @@ pub struct Theme {
     pub mantle: Argb,
     pub crust: Argb,
     pub transparent: Argb,
-    pub bg_opaque: Argb,
 }
 
 theme!(
@@ -68,6 +79,5 @@ theme!(
         mantle: "0xff181825".parse().unwrap(),
         crust: "0xff11111b".parse().unwrap(),
         transparent: "0x00000000".parse().unwrap(),
-        bg_opaque: "0xaa1e1e2e".parse().unwrap(),
     }
 );

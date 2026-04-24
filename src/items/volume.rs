@@ -85,9 +85,7 @@ pub fn update() -> Result<()> {
         .label(&format!("{}%", vol))
         .set()?;
 
-    Slider::new("volume.slider")
-        .percentage(vol as u32)
-        .set()?;
+    Slider::new("volume.slider").percentage(vol as u32).set()?;
 
     Ok(())
 }
@@ -98,14 +96,14 @@ pub fn setup(exe_path: &str) -> Result<()> {
     let item = BarItem::new("volume")
         .position(ComponentPosition::Right)
         .script(&format!("{} --update-volume", exe_path))
-        .background_color(CATPUCCIN_MOCHA.surface0.clone())
+        .background_color(CATPUCCIN_MOCHA.surface0)
         .background_drawing(ToggleState::On)
-        .icon_color(CATPUCCIN_MOCHA.blue.clone())
+        .icon_color(CATPUCCIN_MOCHA.blue)
         .popup_align(PopupAlign::Center)
-        .popup_background_color(CATPUCCIN_MOCHA.base.clone())
+        .popup_background_color(CATPUCCIN_MOCHA.base)
         .popup_background_corner_radius(8)
         .popup_background_border_width(2)
-        .popup_background_border_color(CATPUCCIN_MOCHA.surface1.clone())
+        .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
         .add_slider(
             Slider::new("volume.slider")
                 .percentage(50)
@@ -113,13 +111,13 @@ pub fn setup(exe_path: &str) -> Result<()> {
                 .slider_width(100)
                 .slider_background_height(5)
                 .slider_background_corner_radius(3)
-                .slider_background_color(CATPUCCIN_MOCHA.surface1.clone())
+                .slider_background_color(CATPUCCIN_MOCHA.surface1)
                 .slider_background_drawing(ToggleState::On)
                 .padding_left(5)
                 .padding_right(5)
-                .highlight_color(CATPUCCIN_MOCHA.lavender.clone())
+                .highlight_color(CATPUCCIN_MOCHA.lavender)
                 .knob("󰝥")
-                .knob_color(CATPUCCIN_MOCHA.blue.clone())
+                .knob_color(CATPUCCIN_MOCHA.blue)
                 .knob_font(Font::default())
                 .script(r#"osascript -e "set volume output volume $PERCENTAGE""#),
         );

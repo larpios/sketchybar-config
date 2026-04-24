@@ -1,3 +1,4 @@
+use crate::api::components::Space;
 pub use crate::api::types::{
     Argb, ComponentPosition, Font, PopupAlign, Property, SketchyBool, TextAlignment,
     ToSketchybarArgs, ToggleState, WidthMode,
@@ -9,6 +10,7 @@ use std::fmt::Display;
 pub enum ChildComponent {
     Item(Box<BarItem>),
     Slider(Box<Slider>),
+    Space(Space),
 }
 
 #[derive(Debug, Clone)]
@@ -45,6 +47,11 @@ impl BarItem {
 
     pub fn add_item(mut self, item: BarItem) -> Self {
         self.children.push(ChildComponent::Item(Box::new(item)));
+        self
+    }
+
+    pub fn add_space(mut self, space: Space) -> Self {
+        self.children.push(ChildComponent::Space(space));
         self
     }
 
@@ -146,7 +153,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .icon
             .props
-            .get_or_insert_with(Text::default)
+            .get_or_insert_default()
             .color = Some(color);
         self
     }
@@ -155,7 +162,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .icon
             .props
-            .get_or_insert_with(Text::default)
+            .get_or_insert_default()
             .font = Some(font);
         self
     }
@@ -164,7 +171,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .icon
             .props
-            .get_or_insert_with(Text::default)
+            .get_or_insert_default()
             .drawing = Some(drawing);
         self
     }
@@ -173,9 +180,9 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .icon
             .props
-            .get_or_insert_with(Text::default)
+            .get_or_insert_default()
             .shadow
-            .get_or_insert_with(ShadowProps::default)
+            .get_or_insert_default()
             .drawing = Some(drawing);
         self
     }
@@ -184,9 +191,9 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .icon
             .props
-            .get_or_insert_with(Text::default)
+            .get_or_insert_default()
             .shadow
-            .get_or_insert_with(ShadowProps::default)
+            .get_or_insert_default()
             .color = Some(color);
         self
     }
@@ -205,7 +212,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .label
             .props
-            .get_or_insert_with(Text::default)
+            .get_or_insert_default()
             .color = Some(color);
         self
     }
@@ -214,7 +221,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .label
             .props
-            .get_or_insert_with(Text::default)
+            .get_or_insert_default()
             .font = Some(font);
         self
     }
@@ -223,7 +230,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .label
             .props
-            .get_or_insert_with(Text::default)
+            .get_or_insert_default()
             .drawing = Some(drawing);
         self
     }
@@ -232,9 +239,9 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .label
             .props
-            .get_or_insert_with(Text::default)
+            .get_or_insert_default()
             .shadow
-            .get_or_insert_with(ShadowProps::default)
+            .get_or_insert_default()
             .drawing = Some(drawing);
         self
     }
@@ -243,9 +250,9 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .label
             .props
-            .get_or_insert_with(Text::default)
+            .get_or_insert_default()
             .shadow
-            .get_or_insert_with(ShadowProps::default)
+            .get_or_insert_default()
             .color = Some(color);
         self
     }
@@ -284,7 +291,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .color = Some(color);
         self
     }
@@ -293,7 +300,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .drawing = Some(drawing);
         self
     }
@@ -302,7 +309,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .corner_radius = Some(radius);
         self
     }
@@ -311,7 +318,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .border_width = Some(width);
         self
     }
@@ -320,7 +327,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .border_color = Some(color);
         self
     }
@@ -329,7 +336,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .height = Some(height);
         self
     }
@@ -338,7 +345,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .blur_radius = Some(radius);
         self
     }
@@ -347,7 +354,7 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .clip = Some(clip);
         self
     }
@@ -356,9 +363,9 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .shadow
-            .get_or_insert_with(ShadowProps::default)
+            .get_or_insert_default()
             .drawing = Some(drawing);
         self
     }
@@ -367,9 +374,9 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .shadow
-            .get_or_insert_with(ShadowProps::default)
+            .get_or_insert_default()
             .color = Some(color);
         self
     }
@@ -378,9 +385,9 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .image
-            .get_or_insert_with(ImageProps::default)
+            .get_or_insert_default()
             .image = Some(image);
         self
     }
@@ -389,9 +396,9 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .image
-            .get_or_insert_with(ImageProps::default)
+            .get_or_insert_default()
             .scale = Some(scale);
         self
     }
@@ -400,9 +407,9 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .image
-            .get_or_insert_with(ImageProps::default)
+            .get_or_insert_default()
             .drawing = Some(drawing);
         self
     }
@@ -411,9 +418,9 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .image
-            .get_or_insert_with(ImageProps::default)
+            .get_or_insert_default()
             .corner_radius = Some(radius);
         self
     }
@@ -422,9 +429,9 @@ pub trait ItemBuilder: Sized {
         self.item_props_mut()
             .geometry
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .image
-            .get_or_insert_with(ImageProps::default)
+            .get_or_insert_default()
             .blur_radius = Some(radius);
         self
     }
@@ -434,28 +441,35 @@ pub trait ItemBuilder: Sized {
         self
     }
 
-    fn popup_align(mut self, align: PopupAlign) -> Self {
+    fn popup_blur_radius(mut self, radius: u32) -> Self {
         self.item_props_mut()
             .popup
-            .get_or_insert_with(PopupProps::default)
-            .align = Some(align);
+            .get_or_insert_default()
+            .blur_radius = Some(radius);
+        self
+    }
+
+    fn popup_align(mut self, align: PopupAlign) -> Self {
+        self.item_props_mut().popup.get_or_insert_default().align = Some(align);
+        self
+    }
+
+    fn popup_y_offset(mut self, offset: i32) -> Self {
+        self.item_props_mut().popup.get_or_insert_default().y_offset = Some(offset);
         self
     }
 
     fn popup_drawing(mut self, drawing: ToggleState) -> Self {
-        self.item_props_mut()
-            .popup
-            .get_or_insert_with(PopupProps::default)
-            .drawing = Some(drawing);
+        self.item_props_mut().popup.get_or_insert_default().drawing = Some(drawing);
         self
     }
 
     fn popup_background_color(mut self, color: Argb) -> Self {
         self.item_props_mut()
             .popup
-            .get_or_insert_with(PopupProps::default)
+            .get_or_insert_default()
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .color = Some(color);
         self
     }
@@ -463,19 +477,29 @@ pub trait ItemBuilder: Sized {
     fn popup_background_corner_radius(mut self, radius: u32) -> Self {
         self.item_props_mut()
             .popup
-            .get_or_insert_with(PopupProps::default)
+            .get_or_insert_default()
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .corner_radius = Some(radius);
+        self
+    }
+
+    fn popup_background_blur_radius(mut self, radius: u32) -> Self {
+        self.item_props_mut()
+            .popup
+            .get_or_insert_default()
+            .background
+            .get_or_insert_default()
+            .blur_radius = Some(radius);
         self
     }
 
     fn popup_background_border_width(mut self, width: u32) -> Self {
         self.item_props_mut()
             .popup
-            .get_or_insert_with(PopupProps::default)
+            .get_or_insert_default()
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .border_width = Some(width);
         self
     }
@@ -483,9 +507,9 @@ pub trait ItemBuilder: Sized {
     fn popup_background_border_color(mut self, color: Argb) -> Self {
         self.item_props_mut()
             .popup
-            .get_or_insert_with(PopupProps::default)
+            .get_or_insert_default()
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .border_color = Some(color);
         self
     }
@@ -493,11 +517,11 @@ pub trait ItemBuilder: Sized {
     fn popup_background_image(mut self, image: ImageType) -> Self {
         self.item_props_mut()
             .popup
-            .get_or_insert_with(PopupProps::default)
+            .get_or_insert_default()
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .image
-            .get_or_insert_with(ImageProps::default)
+            .get_or_insert_default()
             .image = Some(image);
         self
     }
@@ -505,11 +529,11 @@ pub trait ItemBuilder: Sized {
     fn popup_background_image_blur_radius(mut self, radius: u32) -> Self {
         self.item_props_mut()
             .popup
-            .get_or_insert_with(PopupProps::default)
+            .get_or_insert_default()
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .image
-            .get_or_insert_with(ImageProps::default)
+            .get_or_insert_default()
             .blur_radius = Some(radius);
         self
     }
@@ -517,11 +541,11 @@ pub trait ItemBuilder: Sized {
     fn popup_background_image_drawing(mut self, drawing: ToggleState) -> Self {
         self.item_props_mut()
             .popup
-            .get_or_insert_with(PopupProps::default)
+            .get_or_insert_default()
             .background
-            .get_or_insert_with(BackgroundProps::default)
+            .get_or_insert_default()
             .image
-            .get_or_insert_with(ImageProps::default)
+            .get_or_insert_default()
             .drawing = Some(drawing);
         self
     }
@@ -532,10 +556,7 @@ pub trait ItemBuilder: Sized {
     }
 
     fn text_align(mut self, align: TextAlignment) -> Self {
-        self.item_props_mut()
-            .text
-            .get_or_insert_with(Text::default)
-            .align = Some(align);
+        self.item_props_mut().text.get_or_insert_default().align = Some(align);
         self
     }
 }
@@ -1073,6 +1094,10 @@ impl ToSketchybarArgs for PopupProps {
             args.push(Property::new("popup.drawing", &drawing.to_on_off()));
         }
 
+        if let Some(y_offset) = self.y_offset {
+            args.push(Property::new("popup.y_offset", &y_offset.to_string()));
+        }
+
         if let Some(blur_radius) = self.blur_radius {
             args.push(Property::new("popup.blur_radius", &blur_radius.to_string()));
         }
@@ -1132,17 +1157,17 @@ impl Slider {
     }
 
     pub fn knob_color(mut self, color: Argb) -> Self {
-        self.knob_props.get_or_insert_with(Text::default).color = Some(color);
+        self.knob_props.get_or_insert_default().color = Some(color);
         self
     }
 
     pub fn knob_highlight(mut self, highlight: ToggleState) -> Self {
-        self.knob_props.get_or_insert_with(Text::default).highlight = Some(highlight);
+        self.knob_props.get_or_insert_default().highlight = Some(highlight);
         self
     }
 
     pub fn knob_font(mut self, font: Font) -> Self {
-        self.knob_props.get_or_insert_with(Text::default).font = Some(font);
+        self.knob_props.get_or_insert_default().font = Some(font);
         self
     }
 
@@ -1152,37 +1177,29 @@ impl Slider {
     }
 
     pub fn slider_background_color(mut self, color: Argb) -> Self {
-        self.background
-            .get_or_insert_with(BackgroundProps::default)
-            .color = Some(color);
+        self.background.get_or_insert_default().color = Some(color);
         self
     }
 
     pub fn slider_background_height(mut self, height: u32) -> Self {
-        self.background
-            .get_or_insert_with(BackgroundProps::default)
-            .height = Some(height);
+        self.background.get_or_insert_default().height = Some(height);
         self
     }
 
     pub fn slider_background_corner_radius(mut self, radius: u32) -> Self {
-        self.background
-            .get_or_insert_with(BackgroundProps::default)
-            .corner_radius = Some(radius);
+        self.background.get_or_insert_default().corner_radius = Some(radius);
         self
     }
 
     pub fn slider_background_drawing(mut self, drawing: ToggleState) -> Self {
-        self.background
-            .get_or_insert_with(BackgroundProps::default)
-            .drawing = Some(drawing);
+        self.background.get_or_insert_default().drawing = Some(drawing);
         self
     }
 }
 
 impl ItemBuilder for Slider {
     fn item_props_mut(&mut self) -> &mut ItemProps {
-        self.item.get_or_insert_with(ItemProps::default)
+        self.item.get_or_insert_default()
     }
 }
 

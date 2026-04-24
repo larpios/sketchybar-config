@@ -140,7 +140,7 @@ impl Network {
             .position(ComponentPosition::Right)
             .update_freq(10)
             .script(&format!("{} --update-network", exe_path))
-            .background_color(CATPUCCIN_MOCHA.surface0.clone())
+            .background_color(CATPUCCIN_MOCHA.surface0)
             .background_drawing(ToggleState::On);
 
         item.add()?;

@@ -59,8 +59,8 @@ impl Weather {
             .script(&format!("{} --update-weather", exe_path))
             .click_script("open 'https://weather.com'")
             .icon("")
-            .icon_color(CATPUCCIN_MOCHA.yellow.clone())
-            .background_color(CATPUCCIN_MOCHA.surface0.clone())
+            .icon_color(CATPUCCIN_MOCHA.yellow)
+            .background_color(CATPUCCIN_MOCHA.surface0)
             .background_drawing(ToggleState::On);
 
         item.add()?;

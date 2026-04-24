@@ -36,14 +36,14 @@ async fn main() -> Result<()> {
         .status();
 
     let bar = Bar {
-        color: CATPUCCIN_MOCHA.base.clone(),
+        color: CATPUCCIN_MOCHA.base,
         position: BarPosition::Top,
         height: 28,
         margin: 8,
         y_offset: 4,
         corner_radius: 21,
         border_width: 2,
-        border_color: CATPUCCIN_MOCHA.surface1.clone(),
+        border_color: CATPUCCIN_MOCHA.surface1,
         padding_left: 8,
         padding_right: 8,
         notch_width: 200,

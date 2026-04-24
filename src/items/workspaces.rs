@@ -23,10 +23,10 @@ pub fn update() -> Result<()> {
         let ws_name = format!("workspace.{}", i);
         let is_active = i == ws_id.parse().unwrap_or(0);
 
-        let active_bg = CATPUCCIN_MOCHA.mauve.clone();
-        let inactive_bg = CATPUCCIN_MOCHA.surface1.clone();
-        let active_icon = CATPUCCIN_MOCHA.crust.clone();
-        let inactive_icon = CATPUCCIN_MOCHA.text.clone();
+        let active_bg = CATPUCCIN_MOCHA.mauve;
+        let inactive_bg = CATPUCCIN_MOCHA.surface1;
+        let active_icon = CATPUCCIN_MOCHA.crust;
+        let inactive_icon = CATPUCCIN_MOCHA.text;
 
         BarItem::new(&ws_name)
             .background_color(if is_active { active_bg } else { inactive_bg })
@@ -47,7 +47,7 @@ pub fn setup(exe_path: &str) -> Result<()> {
         let mut item = BarItem::new(&ws_name)
             .position(ComponentPosition::Left)
             .icon(&i.to_string())
-            .background_color(CATPUCCIN_MOCHA.surface1.clone())
+            .background_color(CATPUCCIN_MOCHA.surface1)
             .background_corner_radius(6)
             .background_drawing(ToggleState::On)
             .label_drawing(ToggleState::Off)

@@ -112,6 +112,9 @@ pub fn add_item(item: &BarItem) -> Result<()> {
                     slider.as_ref(),
                 )?;
             }
+            ChildComponent::Space(space) => {
+                add_special_item("space", &space.name, &format!("popup.{}", item.name), space)?;
+            }
         }
     }
 

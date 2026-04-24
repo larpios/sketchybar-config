@@ -58,7 +58,7 @@ impl SketchyBool for bool {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Argb {
     pub a: u8,
     pub r: u8,

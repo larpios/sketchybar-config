@@ -245,8 +245,8 @@ pub fn setup(exe_path: &str) -> Result<()> {
         .script(&format!("{} --update-media", exe_path))
         .click_script("sketchybar --set media popup.drawing=toggle")
         .icon("󰎆")
-        .icon_color(CATPUCCIN_MOCHA.green.clone())
-        .background_color(CATPUCCIN_MOCHA.surface0.clone())
+        .icon_color(CATPUCCIN_MOCHA.green)
+        .background_color(CATPUCCIN_MOCHA.surface0)
         .background_drawing(ToggleState::On)
         .background_image(ImageType::Path(
             data_dir().join("media.png").to_str().unwrap().to_string(),
@@ -257,10 +257,10 @@ pub fn setup(exe_path: &str) -> Result<()> {
         .padding_left(10)
         .padding_right(10)
         .popup_align(PopupAlign::Center)
-        .popup_background_color(CATPUCCIN_MOCHA.base.clone())
+        .popup_background_color(CATPUCCIN_MOCHA.base)
         .popup_background_corner_radius(12)
         .popup_background_border_width(2)
-        .popup_background_border_color(CATPUCCIN_MOCHA.surface1.clone())
+        .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
         .add_item(
             BarItem::new("media.cover")
                 .background_image(ImageType::MediaArtwork)

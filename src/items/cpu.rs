@@ -63,8 +63,8 @@ impl Cpu {
             .update_freq(2)
             .script(&format!("{} --update-cpu", exe_path))
             .icon("")
-            .icon_color(CATPUCCIN_MOCHA.red.clone())
-            .background_color(CATPUCCIN_MOCHA.surface0.clone())
+            .icon_color(CATPUCCIN_MOCHA.red)
+            .background_color(CATPUCCIN_MOCHA.surface0)
             .background_drawing(ToggleState::On);
 
         item.add()?;

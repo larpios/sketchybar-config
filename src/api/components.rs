@@ -1,4 +1,4 @@
-use crate::api::item::BackgroundProps;
+use crate::api::item::{BackgroundProps, ComponentPosition};
 use crate::api::types::{Argb, Property, ToSketchybarArgs};
 
 #[derive(Debug, Clone)]
@@ -61,13 +61,29 @@ impl ToSketchybarArgs for Graph {
 
 #[derive(Debug, Clone, Default)]
 pub struct Space {
+    pub name: String,
+    pub position: ComponentPosition,
     pub space: Option<u32>,
     pub display: Option<u32>,
 }
 
 impl Space {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(name: &str, position: ComponentPosition) -> Self {
+        Self {
+            name: name.to_string(),
+            position,
+            ..Default::default()
+        }
+    }
+
+    pub fn space(mut self, space: u32) -> Self {
+        self.space = Some(space);
+        self
+    }
+
+    pub fn display(mut self, display: u32) -> Self {
+        self.display = Some(display);
+        self
     }
 }
 
