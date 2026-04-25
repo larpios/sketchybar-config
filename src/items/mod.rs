@@ -3,6 +3,7 @@ pub mod battery;
 pub mod bluetooth;
 pub mod clock;
 pub mod cpu;
+pub mod keyboard_layout;
 pub mod media;
 pub mod network;
 pub mod volume;
@@ -36,6 +37,9 @@ impl ItemRegistry {
             "--update-weather" => Ok(Some(weather::Weather::update_command()?)),
             "--update-battery" => Ok(Some(battery::Battery::update_command()?)),
             "--update-cpu" => Ok(Some(cpu::Cpu::update_command()?)),
+            "--update-keyboard-layout" => {
+                Ok(Some(keyboard_layout::KeyboardLayout::update_command()?))
+            }
             "--update-network" => Ok(Some(network::Network::update_command()?)),
             "--update-volume" => Ok(Some(volume::update_command()?)),
             "--update-media" => Ok(Some(media::update_command()?)),
@@ -69,6 +73,7 @@ impl ItemRegistry {
         network::Network::setup(exe_path)?;
         bluetooth::setup(exe_path).await?;
         cpu::Cpu::setup(exe_path)?;
+        keyboard_layout::KeyboardLayout::setup(exe_path)?;
 
         Ok(())
     }

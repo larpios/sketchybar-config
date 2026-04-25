@@ -202,3 +202,12 @@ pub fn trigger_evt<E: Into<BarEvent>>(evt: E) -> Result<()> {
     sb!("--trigger".to_string(), evt.into().to_string())?;
     Ok(())
 }
+
+pub fn trigger_evt_with_data(evt: &str, data: &str) -> Result<()> {
+    let cmd_args = ["--trigger", evt, &format!("INFO={}", data)];
+    let output = Command::new("sketchybar").args(cmd_args).output()?;
+    if !output.status.success() {
+        eprintln!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
+    }
+    Ok(())
+}
