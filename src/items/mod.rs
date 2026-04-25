@@ -29,7 +29,7 @@ pub trait Item {
 pub struct ItemRegistry;
 
 impl ItemRegistry {
-    /// Execute an item command if registered
+    /// Execute an item command if registered. Returns Some if handled.
     pub async fn execute(cmd: &str, args: &[String]) -> Result<Option<()>> {
         match cmd {
             "--update-clock" => Ok(Some(clock::Clock::update_command()?)),

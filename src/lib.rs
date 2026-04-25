@@ -1,5 +1,6 @@
 #[macro_use]
 pub mod api;
+pub mod daemon;
 pub mod items;
 pub mod media_ffi;
 pub mod path;

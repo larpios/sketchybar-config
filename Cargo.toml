@@ -31,4 +31,8 @@ version = "1.0"
 features = [
     "rt-multi-thread",
     "macros",
+    "net",
+    "time",
+    "io-util",
+    "sync",
 ]

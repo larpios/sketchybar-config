@@ -1,4 +1,4 @@
-use crate::api::item::{BackgroundProps, ComponentPosition};
+use crate::api::item::{BackgroundProps, ChildComponent, ComponentPosition};
 use crate::api::types::{Argb, Property, ToSketchybarArgs};
 
 #[derive(Debug, Clone)]
@@ -102,13 +102,31 @@ impl ToSketchybarArgs for Space {
 
 #[derive(Debug, Clone, Default)]
 pub struct Alias {
+    pub name: String,
+    pub position: ComponentPosition,
+    pub alias: String,
     pub color: Option<Argb>,
     pub scale: Option<f32>,
 }
 
 impl Alias {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(name: &str, position: ComponentPosition, alias: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            position,
+            alias: alias.to_string(),
+            ..Default::default()
+        }
+    }
+
+    pub fn color(mut self, color: Argb) -> Self {
+        self.color = Some(color);
+        self
+    }
+
+    pub fn scale(mut self, scale: f32) -> Self {
+        self.scale = Some(scale);
+        self
     }
 }
 
@@ -127,16 +145,26 @@ impl ToSketchybarArgs for Alias {
 
 #[derive(Debug, Clone, Default)]
 pub struct Bracket {
-    pub members: Vec<String>,
+    pub members: Vec<Box<ChildComponent>>,
     pub background: Option<BackgroundProps>,
 }
 
 impl Bracket {
-    pub fn new(members: Vec<String>) -> Self {
+    pub fn new(members: Vec<Box<ChildComponent>>) -> Self {
         Self {
             members,
             background: None,
         }
+    }
+
+    pub fn background(mut self, props: BackgroundProps) -> Self {
+        self.background = Some(props);
+        self
+    }
+
+    pub fn add_member(mut self, member: Box<ChildComponent>) -> Self {
+        self.members.push(member);
+        self
     }
 }
 

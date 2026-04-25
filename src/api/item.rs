@@ -454,6 +454,19 @@ pub trait ItemBuilder: Sized {
         self
     }
 
+    fn popup_topmost(mut self, topmost: ToggleState) -> Self {
+        self.item_props_mut().popup.get_or_insert_default().topmost = Some(topmost);
+        self
+    }
+
+    fn popup_horizontal(mut self, horizontal: ToggleState) -> Self {
+        self.item_props_mut()
+            .popup
+            .get_or_insert_default()
+            .horizontal = Some(horizontal);
+        self
+    }
+
     fn popup_y_offset(mut self, offset: i32) -> Self {
         self.item_props_mut().popup.get_or_insert_default().y_offset = Some(offset);
         self
@@ -1069,8 +1082,8 @@ impl Default for UpdateMode {
 #[derive(Debug, Clone, Default)]
 pub struct PopupProps {
     pub drawing: Option<ToggleState>,
-    pub horizontal: Option<bool>,
-    pub topmost: Option<bool>,
+    pub horizontal: Option<ToggleState>,
+    pub topmost: Option<ToggleState>,
     pub height: Option<u32>,
     pub blur_radius: Option<u32>,
     pub y_offset: Option<i32>,

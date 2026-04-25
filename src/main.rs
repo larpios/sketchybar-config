@@ -5,6 +5,7 @@ use sketchybarrc::api::bar::BarPosition;
 use sketchybarrc::themes::CATPUCCIN_MOCHA;
 use std::env;
 
+use sketchybarrc::daemon;
 use sketchybarrc::items;
 use sketchybarrc::watcher;
 
@@ -13,7 +14,22 @@ async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 1 {
-        // Handle watcher command
+        // Run as persistent event-loop daemon
+        if args[1] == "--daemon" {
+            return daemon::run().await;
+        }
+
+        // Send a command to the running daemon
+        if args[1] == "--send" {
+            if let Some(json) = args.get(2)
+                && let Err(e) = daemon::send(json).await
+            {
+                eprintln!("[send] daemon unavailable: {e}");
+            }
+            return Ok(());
+        }
+
+        // Handle media watcher
         if args[1] == "--watcher" {
             return watcher::watch_media();
         }
@@ -73,9 +89,12 @@ async fn main() -> Result<()> {
 
     let exe_path = env::current_exe()?.to_string_lossy().to_string();
 
-    // Start media watcher in background
+    // Start background daemons
     let _ = std::process::Command::new(&exe_path)
         .arg("--watcher")
+        .spawn();
+    let _ = std::process::Command::new(&exe_path)
+        .arg("--daemon")
         .spawn();
 
     // Setup all items
