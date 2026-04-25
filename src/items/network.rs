@@ -161,6 +161,7 @@ impl Network {
                 "sketchybar --set network popup.drawing=toggle; {}",
                 popup_cmd
             ))
+            .label_drawing(ToggleState::Off)
             .background_color(CATPUCCIN_MOCHA.surface0)
             .background_drawing(ToggleState::On)
             .popup_align(PopupAlign::Right)
@@ -180,17 +181,10 @@ impl Network {
 
     pub fn update_items(data: &Self) -> Result<()> {
         let item = if !data.is_connected {
-            BarItem::new("network").icon("󰤮").label("Disconnected")
+            BarItem::new("network").icon("󰤮")
         } else {
             let icon = if data.is_wifi { "󰤨" } else { "󰈀" };
-            let label = if !data.ssid.is_empty() {
-                data.ssid.clone()
-            } else if data.is_wifi {
-                "Wi-Fi".to_string()
-            } else {
-                "Ethernet".to_string()
-            };
-            BarItem::new("network").icon(icon).label(&label)
+            BarItem::new("network").icon(icon)
         };
         item.set()?;
         Ok(())

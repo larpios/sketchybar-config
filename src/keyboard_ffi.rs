@@ -1,6 +1,6 @@
+use core::ffi::c_void;
 use core_foundation::base::TCFType;
 use core_foundation::string::CFString;
-use core::ffi::c_void;
 
 #[link(name = "CoreFoundation", kind = "framework")]
 unsafe extern "C" {

@@ -69,11 +69,11 @@ impl ItemRegistry {
         clock::Clock::setup(exe_path)?;
         weather::Weather::setup(exe_path)?;
         volume::setup(exe_path)?;
+        keyboard_layout::KeyboardLayout::setup(exe_path)?;
         battery::Battery::setup(exe_path)?;
         network::Network::setup(exe_path)?;
         bluetooth::setup(exe_path).await?;
         cpu::Cpu::setup(exe_path)?;
-        keyboard_layout::KeyboardLayout::setup(exe_path)?;
 
         Ok(())
     }

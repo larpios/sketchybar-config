@@ -1,4 +1,5 @@
 use crate::api;
+use crate::api::event::BarEvent;
 use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign, Slider};
 use crate::api::types::{Font, ToggleState};
 use crate::themes::CATPUCCIN_MOCHA;
@@ -121,8 +122,6 @@ pub fn setup(exe_path: &str) -> Result<()> {
                 .knob_font(Font::default())
                 .script(r#"osascript -e "set volume output volume $PERCENTAGE""#),
         );
-
-    use crate::api::event::BarEvent;
 
     item.add()?;
     item.subscribe([

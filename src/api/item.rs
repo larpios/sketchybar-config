@@ -257,7 +257,16 @@ pub trait ItemBuilder: Sized {
         self
     }
 
-    fn scroll_texts(mut self, scroll: bool) -> Self {
+    fn label_max_chars(mut self, num_chars: u32) -> Self {
+        self.item_props_mut()
+            .label
+            .props
+            .get_or_insert_default()
+            .max_chars = Some(num_chars);
+        self
+    }
+
+    fn scroll_texts(mut self, scroll: ToggleState) -> Self {
         self.item_props_mut().geometry.scroll_texts = Some(scroll);
         self
     }
@@ -972,7 +981,7 @@ pub struct Geometry {
     pub padding_right: Option<u32>,
     pub width: Option<WidthMode>,
     pub blur_radius: Option<u32>,
-    pub scroll_texts: Option<bool>,
+    pub scroll_texts: Option<ToggleState>,
     pub background: Option<BackgroundProps>,
 }
 

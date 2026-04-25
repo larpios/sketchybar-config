@@ -52,6 +52,12 @@ impl SketchyBool for ToggleState {
     }
 }
 
+impl From<bool> for ToggleState {
+    fn from(value: bool) -> Self {
+        if value { Self::On } else { Self::Off }
+    }
+}
+
 impl SketchyBool for bool {
     fn to_on_off(&self) -> String {
         if *self { "on" } else { "off" }.to_string()

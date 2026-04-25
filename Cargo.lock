@@ -1044,9 +1044,9 @@ dependencies = [
 
 [[package]]
 name = "media-remote"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fe6935038abe0d1ec5b85890fb242f58699a7c6258bbac394329819905335cf"
+checksum = "fec9fe593cd9a8b6e45ec3e312f8ef385584f5dabc1e6bf72535674e0e195767"
 dependencies = [
  "base64",
  "block2 0.6.2",

@@ -1,8 +1,8 @@
 use crate::api;
-use crate::media_ffi;
 use core_foundation::base::TCFType;
 use core_foundation::runloop::{CFRunLoop, kCFRunLoopDefaultMode};
 use core_foundation::string::CFString;
+use media_remote::NowPlayingJXA;
 use std::os::raw::c_void;
 use std::ptr;
 use std::thread;
@@ -60,11 +60,11 @@ pub fn watch_media() -> anyhow::Result<()> {
     // Run this in a background thread so the main thread can run the CFRunLoop.
     thread::spawn(|| {
         loop {
-            let is_playing = media_ffi::get_now_playing_info()
-                .map(|info| info.playback_rate.unwrap_or(0.0) > 0.0)
-                .unwrap_or(false);
+            let now_playing = NowPlayingJXA::new(Duration::from_secs(1));
+            let guard = now_playing.get_info();
+            let info = guard.as_ref();
 
-            if is_playing {
+            if info.is_some_and(|info| info.is_playing.unwrap_or_default()) {
                 let _ = api::trigger_evt("media_update");
             }
 

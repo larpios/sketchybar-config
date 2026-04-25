@@ -4,12 +4,15 @@ use crate::api::item::{
 };
 use crate::api::types::{Argb, Font, FontStyle};
 use crate::api::{self};
-use crate::media_ffi::{self, MediaRemoteCommand};
 use crate::path::data_dir;
 use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::Result;
-use media_remote::{NowPlaying, NowPlayingPerl};
+use image::DynamicImage;
+use media_remote::{Controller, NowPlayingJXA};
 use std::env;
+use std::time::Duration;
+
+const MINIMIZED_WIDTH: u32 = 25;
 
 #[derive(Debug, Clone, Default)]
 pub struct Media {
@@ -18,115 +21,38 @@ pub struct Media {
     pub album: String,
     pub duration: f64,
     pub elapsed_time: f64,
-    pub playback_rate: f64,
-    pub timestamp: Option<f64>,
-    pub has_artwork: bool,
-    pub artwork_path: String,
+    pub is_playing: bool,
+    pub artwork: DynamicImage,
 }
 
 impl Media {
     pub fn fetch() -> Result<Self> {
-        // 1. Try custom FFI
-        if let Some(info) = media_ffi::get_now_playing_info()
-            && (info.title.is_some() || info.artist.is_some())
-        {
-            return Self::from_ffi_info(&info);
-        }
+        let now_playing = NowPlayingJXA::new(Duration::from_secs(1));
 
-        // 2. Try media-remote crate (Native)
-        let now_playing = NowPlaying::new();
-        if let Some(info) = &*now_playing.get_info()
-            && (info.title.is_some() || info.artist.is_some())
-        {
-            return Self::from_crate_info(info);
-        }
+        let guard = now_playing.get_info();
+        let info = guard.as_ref();
 
-        // 3. Try media-remote crate (Perl fallback)
-        let perl = NowPlayingPerl::new();
-        if let Some(info) = &*perl.get_info()
-            && (info.title.is_some() || info.artist.is_some())
-        {
-            return Self::from_crate_info(info);
+        if let Some(info) = info {
+            return Ok(Self {
+                title: info.title.clone().unwrap_or_else(|| "Unknown".into()),
+                artist: info.artist.clone().unwrap_or_else(|| "Unknown".into()),
+                album: info.album.clone().unwrap_or_default(),
+                duration: info.duration.unwrap_or_default(),
+                elapsed_time: info.elapsed_time.unwrap_or_default(),
+                is_playing: info.is_playing.unwrap_or_default(),
+                artwork: info.album_cover.clone().unwrap_or_default(),
+            });
         }
 
         Ok(Self::default())
     }
 
-    fn from_ffi_info(info: &media_ffi::NowPlayingInfo) -> Result<Self> {
-        let artwork_path = data_dir().join("media.png");
-        let mut has_artwork = false;
-
-        if let Some(data) = &info.artwork_data {
-            if std::fs::write(&artwork_path, data).is_ok() {
-                has_artwork = true;
-            }
-        } else if artwork_path.exists() {
-            has_artwork = true;
-        }
-
-        Ok(Self {
-            title: info.title.clone().unwrap_or_else(|| "Unknown".into()),
-            artist: info.artist.clone().unwrap_or_else(|| "Unknown".into()),
-            album: info.album.clone().unwrap_or_default(),
-            duration: info.duration.unwrap_or(0.0),
-            elapsed_time: info.elapsed_time.unwrap_or(0.0),
-            playback_rate: info.playback_rate.unwrap_or(0.0),
-            timestamp: info.timestamp,
-            has_artwork,
-            artwork_path: artwork_path.to_string_lossy().into(),
-        })
-    }
-
-    fn from_crate_info(info: &media_remote::NowPlayingInfo) -> Result<Self> {
-        let artwork_path = data_dir().join("media.png");
-        let mut has_artwork = false;
-
-        if let Some(image) = &info.album_cover
-            && image.save(&artwork_path).is_ok()
-        {
-            has_artwork = true;
-        }
-
-        let timestamp = info.info_update_time.and_then(|t| {
-            t.duration_since(std::time::UNIX_EPOCH)
-                .ok()
-                .map(|d| d.as_secs_f64() - 978_307_200.0)
-        });
-
-        Ok(Self {
-            title: info.title.clone().unwrap_or_else(|| "Unknown".into()),
-            artist: info.artist.clone().unwrap_or_else(|| "Unknown".into()),
-            album: info.album.clone().unwrap_or_default(),
-            duration: info.duration.unwrap_or(0.0),
-            elapsed_time: info.elapsed_time.unwrap_or(0.0),
-            playback_rate: info
-                .is_playing
-                .map(|p| if p { 1.0 } else { 0.0 })
-                .unwrap_or(0.0),
-            timestamp,
-            has_artwork,
-            artwork_path: artwork_path.to_string_lossy().into(),
-        })
-    }
-
     pub fn formatted_progress(&self) -> String {
-        let mut elapsed = self.elapsed_time;
-        let is_playing = self.playback_rate > 0.0;
-
-        if is_playing && let Some(timestamp) = self.timestamp {
-            let now_unix = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs_f64();
-            let apple_reference_date_offset = 978_307_200.0;
-            let timestamp_unix = timestamp + apple_reference_date_offset;
-            let diff = now_unix - timestamp_unix;
-            if diff > 0.0 && diff < 3600.0 {
-                elapsed += diff * self.playback_rate;
-            }
-        }
-
-        format!("{} / {}", format_time(elapsed), format_time(self.duration))
+        format!(
+            "{} / {}",
+            format_time(self.elapsed_time),
+            format_time(self.duration)
+        )
     }
 }
 
@@ -139,15 +65,17 @@ pub fn update() -> Result<()> {
     let sender = env::var("SENDER").unwrap_or_else(|_| "".to_string());
 
     if sender == "mouse.clicked" {
+        let now_playing = NowPlayingJXA::new(Duration::from_secs(1));
+
         match name.as_str() {
             "media.prev" => {
-                media_ffi::send_command(MediaRemoteCommand::PreviousTrack);
+                now_playing.previous();
             }
             "media.next" => {
-                media_ffi::send_command(MediaRemoteCommand::NextTrack);
+                now_playing.next();
             }
             "media.play" => {
-                media_ffi::send_command(MediaRemoteCommand::TogglePlayPause);
+                now_playing.toggle();
             }
             _ => {}
         }
@@ -158,75 +86,57 @@ pub fn update() -> Result<()> {
 
     // Main item
     if data.title.is_empty() && data.artist.is_empty() {
-        BarItem::new("media").drawing(ToggleState::Off).set()?;
+        BarItem::new("media")
+            .width(MINIMIZED_WIDTH)
+            .label_drawing(ToggleState::Off)
+            .set()?;
+
         return Ok(());
     }
 
-    let track_info = if data.artist.is_empty() {
-        data.title.clone()
-    } else if data.title.is_empty() {
-        data.artist.clone()
-    } else {
-        format!("{} - {}", data.artist, data.title)
-    };
-
-    let mut display_text = track_info;
-    if display_text.len() > 25 {
-        display_text.truncate(22);
-        display_text.push_str("...");
-    }
-
-    let mut media_item = BarItem::new("media")
+    let media_item = BarItem::new("media")
         .drawing(ToggleState::On)
-        .label(&display_text)
+        .width(240)
+        .label(&data.title)
+        .label_max_chars(28)
+        .scroll_texts(ToggleState::On)
         .label_drawing(ToggleState::On)
         .icon_drawing(ToggleState::On);
 
-    if data.has_artwork {
-        media_item = media_item
-            .background_image(ImageType::Path(data.artwork_path.clone()))
-            .background_image_drawing(ToggleState::On)
-            .background_image_blur_radius(20)
-            .background_image_scale(0.15);
-    } else {
-        media_item = media_item.background_image_drawing(ToggleState::Off);
-    }
     media_item.set()?;
 
+    let artwork_path = data_dir().join("artwork.jpeg");
+    let _ = std::fs::remove_file(&artwork_path);
+
+    let _ = data
+        .artwork
+        .save_with_format(&artwork_path, image::ImageFormat::Jpeg);
+
     // Popups
-    if data.has_artwork {
-        BarItem::new("media")
-            .popup_background_image(ImageType::Path(data.artwork_path.clone()))
-            .popup_background_image_blur_radius(50)
-            .popup_background_image_drawing(ToggleState::On)
-            .set()?;
-
-        BarItem::new("media.cover")
-            .background_image(ImageType::Path(data.artwork_path.clone()))
-            .background_image_drawing(ToggleState::On)
-            .drawing(ToggleState::On)
-            .set()?;
-    } else {
-        BarItem::new("media.cover")
-            .drawing(ToggleState::Off)
-            .set()?;
-        BarItem::new("media")
-            .popup_background_image_drawing(ToggleState::Off)
-            .set()?;
-    }
-
-    BarItem::new("media.title").label(&data.title).set()?;
-    BarItem::new("media.artist").label(&data.artist).set()?;
-    BarItem::new("media.progress")
-        .label(&data.formatted_progress())
+    BarItem::new("media.cover")
+        .drawing(ToggleState::On)
+        .background_image(ImageType::Path(artwork_path.display().to_string()))
+        .background_image_drawing(ToggleState::On)
         .set()?;
 
-    let play_icon = if data.playback_rate > 0.0 {
-        "󰏤"
-    } else {
-        "󰐎"
-    };
-    BarItem::new("media.play").icon(play_icon).set()?;
+    BarItem::new("media.title")
+        .label(&data.title)
+        .label_drawing(ToggleState::On)
+        .set()?;
+    BarItem::new("media.artist")
+        .label(&data.artist)
+        .label_drawing(ToggleState::On)
+        .set()?;
+    BarItem::new("media.progress")
+        .label(&data.formatted_progress())
+        .label_drawing(ToggleState::On)
+        .set()?;
+
+    let play_icon = if !data.is_playing { "󰏤" } else { "󰐎" };
+    BarItem::new("media.play")
+        .icon(play_icon)
+        .icon_drawing(ToggleState::On)
+        .set()?;
 
     Ok(())
 }
@@ -246,11 +156,10 @@ pub fn setup(exe_path: &str) -> Result<()> {
         .click_script("sketchybar --set media popup.drawing=toggle")
         .icon("󰎆")
         .icon_color(CATPUCCIN_MOCHA.green)
+        .width(MINIMIZED_WIDTH)
         .background_color(CATPUCCIN_MOCHA.surface0)
         .background_drawing(ToggleState::On)
-        .background_image(ImageType::Path(
-            data_dir().join("media.png").to_str().unwrap().to_string(),
-        ))
+        .background_image(ImageType::MediaArtwork)
         .background_image_drawing(ToggleState::On)
         .background_image_scale(0.15)
         .background_image_corner_radius(4)
@@ -258,6 +167,9 @@ pub fn setup(exe_path: &str) -> Result<()> {
         .padding_right(10)
         .popup_align(PopupAlign::Center)
         .popup_background_color(CATPUCCIN_MOCHA.base)
+        .popup_background_image(ImageType::MediaArtwork)
+        .popup_background_image_blur_radius(50)
+        .popup_background_image_drawing(ToggleState::On)
         .popup_background_corner_radius(12)
         .popup_background_border_width(2)
         .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
@@ -277,9 +189,11 @@ pub fn setup(exe_path: &str) -> Result<()> {
             BarItem::new("media.title")
                 .label_font(Font {
                     family: "JetBrainsMono Nerd Font".to_string(),
-                    size: 16.0,
+                    size: 14.0,
                     style: FontStyle::Bold,
                 })
+                .label_max_chars(25)
+                .scroll_texts(ToggleState::On)
                 .width(240)
                 .text_align(TextAlignment::Center),
         )
@@ -326,7 +240,6 @@ pub fn setup(exe_path: &str) -> Result<()> {
                 })
                 .width(80)
                 .text_align(TextAlignment::Center)
-                .y_offset(-32)
                 .click_script(&format!("{} --update-media", exe_path)),
         )
         .add_item(
@@ -339,13 +252,16 @@ pub fn setup(exe_path: &str) -> Result<()> {
                 })
                 .width(80)
                 .text_align(TextAlignment::Center)
-                .y_offset(-32)
                 .click_script(&format!("{} --update-media", exe_path)),
         );
 
     api::add_event("media_update")?;
     item.add()?;
-    item.subscribe([BarEvent::from("media_update"), BarEvent::MouseClicked])?;
+    item.subscribe([
+        BarEvent::from("media_change"),
+        BarEvent::from("media_update"),
+        BarEvent::MouseClicked,
+    ])?;
 
     Ok(())
 }

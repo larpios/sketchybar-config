@@ -145,25 +145,27 @@ impl ToSketchybarArgs for Alias {
 
 #[derive(Debug, Clone, Default)]
 pub struct Bracket {
-    pub members: Vec<Box<ChildComponent>>,
+    pub name: String,
+    pub members: Vec<ChildComponent>,
     pub background: Option<BackgroundProps>,
 }
 
 impl Bracket {
-    pub fn new(members: Vec<Box<ChildComponent>>) -> Self {
+    pub fn new(name: &str) -> Self {
         Self {
-            members,
+            name: name.to_string(),
+            members: Vec::new(),
             background: None,
         }
     }
 
-    pub fn background(mut self, props: BackgroundProps) -> Self {
-        self.background = Some(props);
+    pub fn add_member(mut self, member: ChildComponent) -> Self {
+        self.members.push(member);
         self
     }
 
-    pub fn add_member(mut self, member: Box<ChildComponent>) -> Self {
-        self.members.push(member);
+    pub fn background(mut self, props: BackgroundProps) -> Self {
+        self.background = Some(props);
         self
     }
 }

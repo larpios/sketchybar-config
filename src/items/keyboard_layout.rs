@@ -1,6 +1,5 @@
 use crate::items::Item;
 use anyhow::Result;
-use std::env;
 use std::process::Command;
 
 #[derive(Debug, Clone)]
@@ -46,8 +45,11 @@ fn source_id_to_code(id: &str) -> String {
 // (from PlistBuddy's KeyboardLayout Name field).
 fn keyboard_name_to_code(name: &str) -> String {
     match name {
-        n if n.starts_with("U.S") || n.starts_with("ABC") || n.starts_with("British")
-            || n.starts_with("Australian") || n.starts_with("Canadian") =>
+        n if n.starts_with("U.S")
+            || n.starts_with("ABC")
+            || n.starts_with("British")
+            || n.starts_with("Australian")
+            || n.starts_with("Canadian") =>
         {
             "EN".into()
         }
@@ -70,10 +72,7 @@ fn keyboard_name_to_code(name: &str) -> String {
 
 fn fetch_via_plist() -> String {
     let home = std::env::var("HOME").unwrap_or_default();
-    let plist = format!(
-        "{}/Library/Preferences/com.apple.HIToolbox.plist",
-        home
-    );
+    let plist = format!("{}/Library/Preferences/com.apple.HIToolbox.plist", home);
     let output = Command::new("/usr/libexec/PlistBuddy")
         .args(["-c", "Print :AppleInputSourceHistory:0", &plist])
         .output();
@@ -120,9 +119,7 @@ impl KeyboardLayout {
     pub fn update_items(data: &Self) -> Result<()> {
         use crate::api::item::{BarItem, ItemBuilder};
 
-        BarItem::new("keyboard_layout")
-            .label(&data.name)
-            .set()?;
+        BarItem::new("keyboard_layout").label(&data.name).set()?;
 
         Ok(())
     }
