@@ -1,6 +1,12 @@
 use crate::items::Item;
 use anyhow::Result;
-use std::process::Command;
+use lazy_static::lazy_static;
+use std::{sync::Mutex, thread, time::Duration};
+use sysinfo::{CpuRefreshKind, System};
+
+lazy_static! {
+    static ref SYS: Mutex<System> = Mutex::new(System::new_all());
+}
 
 #[derive(Debug, Clone)]
 pub struct Cpu {
@@ -27,29 +33,15 @@ impl Cpu {
         Self::update_items(&data)
     }
     pub fn fetch() -> anyhow::Result<Self> {
-        // 1. Get number of cores
-        let cores_output = Command::new("sysctl").args(["-n", "hw.ncpu"]).output()?;
-        let cores: f32 = String::from_utf8_lossy(&cores_output.stdout)
-            .trim()
-            .parse()
-            .unwrap_or(1.0);
+        let mut sys = SYS.lock().unwrap();
 
-        // 2. Get total CPU usage from ps
-        // %cpu is the sum of %cpu for all processes. On macOS, this is per-core (e.g. 800% for 8 cores)
-        let ps_output = Command::new("ps").args(["-A", "-o", "%cpu"]).output()?;
+        sys.refresh_cpu_specifics(CpuRefreshKind::everything());
 
-        let stdout = String::from_utf8_lossy(&ps_output.stdout);
-        let mut total_cpu: f32 = 0.0;
-        for line in stdout.lines().skip(1) {
-            // Skip " %CPU" header
-            if let Ok(val) = line.trim().parse::<f32>() {
-                total_cpu += val;
-            }
-        }
+        thread::sleep(Duration::from_millis(200));
 
-        let load = (total_cpu / cores).round() as u8;
-        // Clamp to 100
-        let load = if load > 100 { 100 } else { load };
+        sys.refresh_cpu_specifics(CpuRefreshKind::everything());
+
+        let load = (sys.global_cpu_usage().round() as u8).clamp(0, 100);
 
         Ok(Self { load })
     }
