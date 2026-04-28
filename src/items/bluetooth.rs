@@ -328,7 +328,7 @@ impl Bluetooth {
         );
 
         let click_script = format!(
-            "sketchybar --set $NAME background.highlight=on; sleep 0.1; sketchybar --set $NAME background.highlight=off; {}",
+            "sketchybar --animate sin 10 --set $NAME background.highlight=on; sleep 0.1; sketchybar --animate sin 10 --set $NAME background.highlight=off; {}",
             toggle_cmd
         );
 
@@ -390,7 +390,7 @@ impl SketchybarItem for Bluetooth {
             .update_freq(5)
             .script(&format!("{} --update-bluetooth", exe_path))
             .click_script(&format!(
-                "sketchybar --set bluetooth popup.drawing=toggle; {}",
+                "sketchybar --animate sin 15 --set bluetooth popup.drawing=toggle; {}",
                 scan_cmd
             ))
             .icon("")

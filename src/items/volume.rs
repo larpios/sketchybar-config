@@ -61,7 +61,7 @@ impl Volume {
                 "mouse.clicked" if name == "volume" => {
                     BarItem::new("volume")
                         .popup_drawing(ToggleState::Toggle)
-                        .set()?;
+                        .animate_set("sin", 15)?;
                 }
                 _ => {}
             }

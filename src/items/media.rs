@@ -95,7 +95,7 @@ impl Media {
             BarItem::new("media")
                 .width(MINIMIZED_WIDTH)
                 .label_drawing(ToggleState::Off)
-                .set()?;
+                .animate_set("sin", 15)?;
 
             return Ok(());
         }
@@ -109,7 +109,7 @@ impl Media {
             .label_drawing(ToggleState::On)
             .icon_drawing(ToggleState::On);
 
-        media_item.set()?;
+        media_item.animate_set("sin", 15)?;
 
         let artwork_path = data_dir().join("artwork.jpeg");
         let _ = std::fs::remove_file(&artwork_path);
@@ -155,7 +155,7 @@ impl SketchybarItem for Media {
             .position(ComponentPosition::Left)
             .update_freq(0)
             .script(&format!("{} --update-media", exe_path))
-            .click_script("sketchybar --set media popup.drawing=toggle")
+            .click_script("sketchybar --animate sin 15 --set media popup.drawing=toggle")
             .icon("󰎆")
             .icon_color(CATPUCCIN_MOCHA.green)
             .width(MINIMIZED_WIDTH)

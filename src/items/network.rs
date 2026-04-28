@@ -414,7 +414,7 @@ impl Network {
         );
 
         let click_script = format!(
-            "sketchybar --set $NAME background.highlight=on; sleep 0.1; sketchybar --set $NAME background.highlight=off; {}",
+            "sketchybar --animate sin 10 --set $NAME background.highlight=on; sleep 0.1; sketchybar --animate sin 10 --set $NAME background.highlight=off; {}",
             connect_script
         );
 
@@ -446,7 +446,7 @@ impl SketchybarItem for Network {
             .update_freq(10)
             .script(&format!("{} --update-network", exe_path))
             .click_script(&format!(
-                "sketchybar --set network popup.drawing=toggle; {}",
+                "sketchybar --animate sin 15 --set network popup.drawing=toggle; {}",
                 popup_cmd
             ))
             .label_drawing(ToggleState::Off)

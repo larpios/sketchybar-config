@@ -158,6 +158,29 @@ pub fn add_special_item<T: ToSketchybarArgs>(
     Ok(())
 }
 
+pub fn animate_set_item<T: ToSketchybarArgs>(
+    curve: &str,
+    duration: u32,
+    item_name: &str,
+    item: &T,
+) -> Result<()> {
+    let mut args = vec![
+        "--animate".to_string(),
+        curve.to_string(),
+        duration.to_string(),
+        "--set".to_string(),
+        item_name.to_string(),
+    ];
+    args.extend(
+        item.to_sketchybar_args()
+            .iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<String>>(),
+    );
+    sb!(args)?;
+    Ok(())
+}
+
 pub fn set_item<T: ToSketchybarArgs>(item_name: &str, item: &T) -> Result<()> {
     let mut args = vec!["--set".to_string(), item_name.to_string()];
     args.extend(
