@@ -10,7 +10,9 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use local_ip_address::local_ip;
 use serde::Deserialize;
-use std::process::Command;
+use std::process::Stdio;
+use tokio::io::AsyncWriteExt;
+use tokio::process::Command;
 
 #[derive(Debug, Clone)]
 pub struct NetworkData {
@@ -35,13 +37,13 @@ struct WifiNetwork {
 pub struct Network;
 
 impl Network {
-    pub fn update_command() -> Result<()> {
-        let data = Self::fetch()?;
+    pub async fn update_command() -> Result<()> {
+        let data = Self::fetch().await?;
         Self::update_items(&data)
     }
 
-    pub fn fetch() -> Result<NetworkData> {
-        let scutil_output = Command::new("scutil").arg("--nwi").output()?;
+    pub async fn fetch() -> Result<NetworkData> {
+        let scutil_output = Command::new("scutil").arg("--nwi").output().await?;
         let stdout = String::from_utf8_lossy(&scutil_output.stdout);
         let mut device = String::new();
         let mut ip = String::new();
@@ -80,20 +82,21 @@ impl Network {
 
         // Check if the primary interface is Wi-Fi by querying its AirPort state
         let mut child = Command::new("scutil")
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
             .spawn()?;
 
         {
-            use std::io::Write;
             if let Some(mut stdin) = child.stdin.take() {
-                stdin.write_all(
-                    format!("show State:/Network/Interface/{}/AirPort\n", device).as_bytes(),
-                )?;
+                stdin
+                    .write_all(
+                        format!("show State:/Network/Interface/{}/AirPort\n", device).as_bytes(),
+                    )
+                    .await?;
             }
         }
 
-        let airport_output = child.wait_with_output()?;
+        let airport_output = child.wait_with_output().await?;
         let airport_stdout = String::from_utf8_lossy(&airport_output.stdout);
         let mut ssid = String::new();
         let mut is_wifi = false;
@@ -108,7 +111,8 @@ impl Network {
         } else {
             let hardware_output = Command::new("networksetup")
                 .args(["-listallhardwareports"])
-                .output()?;
+                .output()
+                .await?;
             let hw_stdout = String::from_utf8_lossy(&hardware_output.stdout);
             let lines: Vec<&str> = hw_stdout.lines().collect();
             for i in 0..lines.len() {
@@ -126,7 +130,8 @@ impl Network {
         if is_wifi {
             let power_output = Command::new("networksetup")
                 .args(["-getairportpower", &device])
-                .output()?;
+                .output()
+                .await?;
             is_wifi_on = String::from_utf8_lossy(&power_output.stdout).contains("On");
         }
 
@@ -152,7 +157,7 @@ impl Network {
     }
 
     pub async fn update_popup() -> Result<()> {
-        let data = Self::fetch()?;
+        let data = Self::fetch().await?;
         if !data.is_wifi {
             return Ok(());
         }
@@ -166,7 +171,8 @@ impl Network {
                 "network.toggle",
                 "network.loading",
             ])
-            .status();
+            .status()
+            .await;
 
         let exe_path = std::env::current_exe()?.to_string_lossy().to_string();
 
@@ -210,12 +216,15 @@ impl Network {
         api::add_special_item("item", "network.loading", "popup.network", &loading)?;
 
         // Blocking scan
-        let networks = Self::scan_networks(&data.device).unwrap_or_default();
-        let known = Self::fetch_known_networks(&data.device).unwrap_or_default();
+        let networks = Self::scan_networks(&data.device).await.unwrap_or_default();
+        let known = Self::fetch_known_networks(&data.device)
+            .await
+            .unwrap_or_default();
 
         let _ = Command::new("sketchybar")
             .args(["--remove", "network.loading"])
-            .status();
+            .status()
+            .await;
 
         Self::render_network_list(networks, known, &data.device, &exe_path).await?;
 
@@ -225,11 +234,12 @@ impl Network {
     pub async fn toggle_wifi_power(device: &str, state: &str) -> Result<()> {
         let _ = Command::new("networksetup")
             .args(["-setairportpower", device, state])
-            .status();
+            .status()
+            .await;
 
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         Self::update_popup().await?;
-        Self::update_command()?;
+        Self::update_command().await?;
         Ok(())
     }
 
@@ -243,7 +253,8 @@ impl Network {
             end run";
             let output = Command::new("osascript")
                 .args(["-e", script, ssid])
-                .output()?;
+                .output()
+                .await?;
 
             if !output.status.success() {
                 return Err(anyhow!("Password entry cancelled"));
@@ -258,16 +269,17 @@ impl Network {
         if !password.is_empty() {
             cmd.arg(&password);
         }
-        let _ = cmd.status();
+        let _ = cmd.status().await;
 
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         Ok(())
     }
 
-    fn fetch_known_networks(device: &str) -> Result<Vec<String>> {
+    async fn fetch_known_networks(device: &str) -> Result<Vec<String>> {
         let output = Command::new("networksetup")
             .args(["-listpreferredwirelessnetworks", device])
-            .output()?;
+            .output()
+            .await?;
         let stdout = String::from_utf8_lossy(&output.stdout);
         Ok(stdout
             .lines()
@@ -277,10 +289,11 @@ impl Network {
             .collect())
     }
 
-    fn scan_networks(device: &str) -> Result<Vec<WifiNetwork>> {
+    async fn scan_networks(device: &str) -> Result<Vec<WifiNetwork>> {
         let output = Command::new("system_profiler")
             .args(["SPAirPortDataType", "-json"])
-            .output()?;
+            .output()
+            .await?;
 
         let json: serde_json::Value = serde_json::from_slice(&output.stdout)?;
         let mut networks = Vec::new();
@@ -330,7 +343,8 @@ impl Network {
                 "/network\\.device\\..*/",
                 "/network\\.section\\..*/",
             ])
-            .status();
+            .status()
+            .await;
 
         let mut known = Vec::new();
         let mut other = Vec::new();
@@ -447,7 +461,7 @@ impl SketchybarItem for Network {
         item.add()?;
         item.subscribe([BarEvent::WifiChange])?;
 
-        let data = Self::fetch()?;
+        let data = Self::fetch().await?;
         Self::update_items(&data)?;
 
         Ok(())
@@ -472,14 +486,16 @@ impl SketchybarItem for Network {
                         } else if data.action.starts_with("connect:") {
                             let parts: Vec<&str> = data.action.split(':').collect();
                             let security = parts.get(1).unwrap_or(&"Open");
-                            let device = parts.get(2).map(|s| s.to_string()).unwrap_or_else(|| {
-                                Self::fetch().map(|d| d.device).unwrap_or_default()
-                            });
+                            let device = if let Some(d) = parts.get(2) {
+                                d.to_string()
+                            } else {
+                                Self::fetch().await.map(|d| d.device).unwrap_or_default()
+                            };
                             let ssid = data.ssid.unwrap_or_default();
                             if let Err(e) = Self::connect_network(&ssid, &device, security).await {
                                 eprintln!("[network] connect error: {e}");
                             } else {
-                                let _ = Self::update_command();
+                                let _ = Self::update_command().await;
                                 let _ = Self::update_popup().await;
                             }
                         }

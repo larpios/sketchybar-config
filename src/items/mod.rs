@@ -45,7 +45,7 @@ pub async fn handle_command(cmd: &str) -> Result<Option<()>> {
         "--update-keyboard-layout" => {
             Ok(Some(keyboard_layout::KeyboardLayout::update_command(None)?))
         }
-        "--update-network" => Ok(Some(network::Network::update_command()?)),
+        "--update-network" => Ok(Some(network::Network::update_command().await?)),
         "--update-volume" => Ok(Some(volume::Volume::update_command()?)),
         "--update-media" => Ok(Some(media::Media::update_command()?)),
         "--update-workspaces" => Ok(Some(workspaces::Workspaces::update_command()?)),
