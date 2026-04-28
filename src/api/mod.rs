@@ -4,6 +4,7 @@ pub mod components;
 pub mod event;
 pub mod exec;
 pub mod item;
+pub mod macros;
 pub mod props;
 pub mod types;
 
@@ -12,10 +13,11 @@ use std::process::Command;
 use anyhow::{Ok, Result};
 
 use crate::api::bar::Bar;
+use crate::api::components::{Bracket, Space};
 use crate::api::event::BarEvent;
-use crate::api::item::{BarItem, ChildComponent};
+use crate::api::item::{BarItem, PopupChild, Slider};
 use crate::api::props::ComponentPosition;
-use crate::api::types::ToSketchybarArgs;
+use crate::api::types::{RelativePosition, ToSketchybarArgs};
 
 macro_rules! sb {
     ($args:ident) => {
@@ -103,21 +105,15 @@ pub fn add_item(item: &BarItem) -> Result<()> {
     // Handle children
     for child in &item.children {
         match child {
-            ChildComponent::Item(child_item) => {
+            PopupChild::Item(child_item) => {
                 let mut c = child_item.clone();
                 c.props.geometry.position = Some(ComponentPosition::Popup(item.name.clone()));
                 add_item(&c)?;
             }
-            ChildComponent::Slider(slider) => {
-                add_special_item(
-                    "slider",
-                    &slider.name,
-                    &format!("popup.{}", item.name),
-                    slider.as_ref(),
-                )?;
-            }
-            ChildComponent::Space(space) => {
-                add_special_item("space", &space.name, &format!("popup.{}", item.name), space)?;
+            PopupChild::Slider(slider) => {
+                let mut s = slider.clone();
+                s.position = ComponentPosition::Popup(item.name.clone());
+                add_slider(&s)?;
             }
         }
     }
@@ -125,26 +121,51 @@ pub fn add_item(item: &BarItem) -> Result<()> {
     Ok(())
 }
 
-pub fn add_special_item<T: ToSketchybarArgs>(
-    kind: &str,
-    name: &str,
-    parent_or_pos: &str,
+pub fn add_bracket(bracket: &Bracket) -> Result<()> {
+    add_special_item("bracket", bracket.name.as_str(), None, bracket)
+}
+
+pub fn add_slider(slider: &Slider) -> Result<()> {
+    add_special_item(
+        "slider",
+        slider.name.as_str(),
+        Some(slider.position.clone()),
+        slider,
+    )
+}
+
+pub fn add_space(space: &Space) -> Result<()> {
+    add_special_item(
+        "space",
+        space.name.as_str(),
+        Some(space.position.clone()),
+        space,
+    )
+}
+
+pub fn add_special_item<T: ToSketchybarArgs, S: AsRef<str>, P: Into<Option<ComponentPosition>>>(
+    kind: S,
+    name: S,
+    parent_or_pos: P,
     item: &T,
 ) -> Result<()> {
+    let name = name.as_ref();
+    let kind = kind.as_ref();
+    let parent_or_pos = parent_or_pos.into();
+
     // Remove if exists (silently)
     let _ = Command::new("sketchybar")
         .arg("--remove")
         .arg(name)
         .output();
 
-    let mut args = vec![
-        "--add".to_string(),
-        kind.to_string(),
-        name.to_string(),
-        parent_or_pos.to_string(),
-        "--set".to_string(),
-        name.to_string(),
-    ];
+    let mut args = vec!["--add".to_string(), kind.to_string(), name.to_string()];
+
+    if let Some(pos) = parent_or_pos {
+        args.push(pos.to_string());
+    }
+
+    args.extend(["--set".to_string(), name.to_string()]);
 
     args.extend(
         item.to_sketchybar_args()
@@ -153,9 +174,28 @@ pub fn add_special_item<T: ToSketchybarArgs>(
             .collect::<Vec<String>>(),
     );
 
-    sb!(args)?;
+    sb!(args)
+}
 
-    Ok(())
+pub fn rename_item(item_name: &str, new_name: &str) -> Result<()> {
+    sb!("--rename", item_name, new_name)
+}
+
+pub fn remove_item(item_name: &str) -> Result<()> {
+    sb!("--remove", &item_name)
+}
+
+pub fn clone_item(
+    item_name: &str,
+    new_name: &str,
+    rel_pos: Option<RelativePosition>,
+) -> Result<()> {
+    sb!(
+        "--clone",
+        item_name,
+        new_name,
+        rel_pos.unwrap_or_default().to_string()
+    )
 }
 
 pub fn animate_set_item<T: ToSketchybarArgs>(

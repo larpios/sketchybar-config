@@ -1,4 +1,4 @@
-use crate::api::item::{BackgroundProps, ChildComponent, ComponentPosition};
+use crate::api::item::{BackgroundProps, ComponentPosition, Geometry, ImageProps, ToggleState};
 use crate::api::types::{Argb, Property, ToSketchybarArgs};
 
 #[derive(Debug, Clone)]
@@ -146,7 +146,8 @@ impl ToSketchybarArgs for Alias {
 #[derive(Debug, Clone, Default)]
 pub struct Bracket {
     pub name: String,
-    pub members: Vec<ChildComponent>,
+    pub members: Vec<String>,
+    pub geometry: Option<Geometry>,
     pub background: Option<BackgroundProps>,
 }
 
@@ -155,18 +156,72 @@ impl Bracket {
         Self {
             name: name.to_string(),
             members: Vec::new(),
+            geometry: None,
             background: None,
         }
     }
 
-    pub fn add_member(mut self, member: ChildComponent) -> Self {
+    pub fn add_member(mut self, member: String) -> Self {
         self.members.push(member);
+        self
+    }
+
+    pub fn padding_left(mut self, padding: u32) -> Self {
+        self.geometry.get_or_insert_default().padding_left = Some(padding);
+        self
+    }
+
+    pub fn padding_right(mut self, padding: u32) -> Self {
+        self.geometry.get_or_insert_default().padding_right = Some(padding);
+        self
+    }
+
+    pub fn drawing(mut self, drawing: ToggleState) -> Self {
+        self.geometry.get_or_insert_default().drawing = Some(drawing);
+        self
+    }
+
+    pub fn space(mut self, space: u32) -> Self {
+        self.geometry.get_or_insert_default().space = Some(space);
         self
     }
 
     pub fn background(mut self, props: BackgroundProps) -> Self {
         self.background = Some(props);
         self
+    }
+
+    pub fn background_color(mut self, color: Argb) -> Self {
+        self.background.get_or_insert_default().color = Some(color);
+        self
+    }
+
+    pub fn background_corner_radius(mut self, radius: u32) -> Self {
+        self.background.get_or_insert_default().corner_radius = Some(radius);
+        self
+    }
+
+    pub fn background_blur_radius(mut self, radius: u32) -> Self {
+        self.background.get_or_insert_default().blur_radius = Some(radius);
+        self
+    }
+
+    pub fn background_image(mut self, image_props: ImageProps) -> Self {
+        self.background.get_or_insert_default().image = Some(image_props);
+        self
+    }
+
+    pub fn background_drawing(mut self, drawing: ToggleState) -> Self {
+        self.background.get_or_insert_default().drawing = Some(drawing);
+        self
+    }
+
+    pub fn set(&self) -> anyhow::Result<()> {
+        crate::api::set_item(self.name.as_str(), self)
+    }
+
+    pub fn add(&self) -> anyhow::Result<()> {
+        crate::api::add_bracket(self)
     }
 }
 

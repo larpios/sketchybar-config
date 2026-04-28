@@ -1,11 +1,12 @@
 use crate::api;
 use crate::api::event::BarEvent;
 use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign, Slider};
-use crate::api::types::{Font, ToggleState};
+use crate::api::types::ToggleState;
+use crate::children;
 use crate::events::Event;
 use crate::items::SketchybarItem;
 use crate::themes::CATPUCCIN_MOCHA;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use std::env;
 use std::process::Command;
@@ -34,34 +35,38 @@ impl Volume {
                         "-e",
                         "on run argv",
                         "-e",
-                        "set volume output volume (item 1 of argv)",
+                        "set volume output volume (item 1 of argv as number)",
                         "-e",
                         "end run",
+                        "--",
                         &vol_int.to_string(),
                     ])
                     .status();
             }
         } else {
-            match sender.as_str() {
-                "mouse.scrolled" => {
+            let event: BarEvent = sender.clone().into();
+            match event {
+                BarEvent::MouseScrolled => {
                     if let Ok(delta) = scroll_delta.parse::<f32>() {
                         let vol_delta = -delta * VOLUME_SCROLL_SENSITIVITY;
+                        let vol_delta_str = vol_delta.to_string();
                         let _ = Command::new("osascript")
                             .args([
                                 "-e",
                                 "on run argv",
                                 "-e",
-                                "set volume output volume ((output volume of (get volume settings)) + (item 1 of argv))",
+                                "set volume output volume ((output volume of (get volume settings)) + (item 1 of argv as number))",
                                 "-e",
                                 "end run",
-                                &vol_delta.to_string(),
+                                "--",
+                                vol_delta_str.as_str(),
                             ])
                             .status();
                     }
                 }
-                "mouse.clicked" if name == "volume" => {
+                BarEvent::MouseClicked if name == "volume" => {
                     BarItem::new("volume")
-                        .popup_drawing(ToggleState::Toggle)
+                        .popup(|p| p.drawing(ToggleState::Toggle))
                         .animate_set("sin", 15)?;
                 }
                 _ => {}
@@ -80,7 +85,10 @@ impl Volume {
             String::from_utf8_lossy(&output.stdout).trim().to_string()
         };
 
-        let vol: u8 = vol_str.parse::<f32>().map(|f| f as u8).unwrap_or(50);
+        let vol: u8 = vol_str
+            .parse::<f32>()
+            .map(|f| f as u8)
+            .with_context(|| format!("Failed to parse volume: {vol_str}"))?;
 
         // Check if muted
         let muted_output = Command::new("osascript")
@@ -125,34 +133,36 @@ impl SketchybarItem for Volume {
             .map(|f| f as u32)
             .unwrap_or(50);
 
-        let item = BarItem::new("volume")
-            .position(ComponentPosition::Right)
+        let item = BarItem::new_with_pos("volume", ComponentPosition::Right)
             .script(&format!("{} --update-volume", exe_path))
-            .background_color(CATPUCCIN_MOCHA.surface0)
-            .background_drawing(ToggleState::On)
-            .icon_color(CATPUCCIN_MOCHA.blue)
-            .popup_align(PopupAlign::Center)
-            .popup_background_color(CATPUCCIN_MOCHA.base)
-            .popup_background_corner_radius(8)
-            .popup_background_border_width(2)
-            .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
-            .add_slider(
+            .background(|b| b.color(CATPUCCIN_MOCHA.surface0).drawing(ToggleState::On))
+            .icon_props(|p| p.color(CATPUCCIN_MOCHA.blue))
+            .popup(|p| {
+                p.align(PopupAlign::Center).background(|b| {
+                    b.color(CATPUCCIN_MOCHA.base)
+                        .corner_radius(8)
+                        .border_width(2)
+                        .border_color(CATPUCCIN_MOCHA.surface1)
+                })
+            })
+            .with_children(children![
                 Slider::new("volume.slider")
                     .percentage(current_vol)
-                    .background_drawing(ToggleState::Off)
+                    .background(|b| b.drawing(ToggleState::Off))
                     .slider_width(100)
-                    .slider_background_height(5)
-                    .slider_background_corner_radius(3)
-                    .slider_background_color(CATPUCCIN_MOCHA.surface1)
-                    .slider_background_drawing(ToggleState::On)
+                    .slider_background(|b| {
+                        b.height(5)
+                            .corner_radius(3)
+                            .color(CATPUCCIN_MOCHA.surface1)
+                            .drawing(ToggleState::On)
+                    })
                     .padding_left(5)
                     .padding_right(5)
                     .highlight_color(CATPUCCIN_MOCHA.lavender)
                     .knob("󰝥")
-                    .knob_color(CATPUCCIN_MOCHA.blue)
-                    .knob_font(Font::default())
-                    .script(&format!("{} --update-volume", exe_path)),
-            );
+                    .knob_props(|p| p.color(CATPUCCIN_MOCHA.blue))
+                    .script(&format!("{} --update-volume", exe_path))
+            ]);
 
         item.add()?;
         item.subscribe([

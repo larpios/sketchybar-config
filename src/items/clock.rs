@@ -1,5 +1,5 @@
-use crate::events::Event;
 use crate::items::SketchybarItem;
+use crate::{api::item::ItemBuilder, events::Event};
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{Local, Utc};
@@ -39,7 +39,7 @@ impl Clock {
     }
 
     pub fn update_items(data: &ClockData) -> anyhow::Result<()> {
-        use crate::api::item::{BarItem, ItemBuilder};
+        use crate::api::item::BarItem;
 
         BarItem::new("clock").label(&data.time).set()?;
         BarItem::new("clock.date").label(&data.full_date).set()?;
@@ -53,28 +53,31 @@ impl Clock {
 impl SketchybarItem for Clock {
     async fn setup(&self, exe_path: &str) -> Result<()> {
         use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign, ToggleState};
+        use crate::children;
         use crate::themes::CATPUCCIN_MOCHA;
 
-        let item = BarItem::new("clock")
-            .position(ComponentPosition::Right)
+        let item = BarItem::new_with_pos("clock", ComponentPosition::Right)
             .update_freq(10)
             .script(&format!("{} --update-clock", exe_path))
             .icon("󰥔")
-            .icon_color(CATPUCCIN_MOCHA.blue)
-            .background_color(CATPUCCIN_MOCHA.surface0)
-            .background_drawing(ToggleState::On)
-            .popup_align(PopupAlign::Center)
-            .popup_background_color(CATPUCCIN_MOCHA.base)
-            .popup_background_corner_radius(8)
-            .popup_background_border_width(2)
-            .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
+            .icon_props(|p| p.color(CATPUCCIN_MOCHA.blue))
+            .background(|b| b.color(CATPUCCIN_MOCHA.surface0).drawing(ToggleState::On))
+            .popup(|p| {
+                p.align(PopupAlign::Right).background(|b| {
+                    b.color(CATPUCCIN_MOCHA.base)
+                        .corner_radius(8)
+                        .border_width(2)
+                        .border_color(CATPUCCIN_MOCHA.surface1)
+                })
+            })
             .click_script("sketchybar --animate sin 15 --set clock popup.drawing=toggle")
-            .add_item(BarItem::new("clock.date").icon("Date:").label("Loading..."))
-            .add_item(BarItem::new("clock.utc").icon("UTC:").label("Loading..."));
+            .with_children(children![
+                BarItem::new("clock.date").icon("Date:").label("Loading..."),
+                BarItem::new("clock.utc").icon("UTC:").label("Loading..."),
+            ]);
 
         item.add()?;
 
-        // Initial update
         let data = Self::fetch()?;
         Self::update_items(&data)?;
 

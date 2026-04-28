@@ -105,6 +105,11 @@ impl Argb {
             b: (hex & 0xff) as u8,
         }
     }
+
+    pub fn alpha(mut self, alpha: f32) -> Self {
+        self.a = (alpha * 255.0) as u8;
+        self
+    }
 }
 
 impl FromStr for Argb {
@@ -201,6 +206,27 @@ pub enum ComponentPosition {
     Popup(String),
 }
 
+impl From<&str> for ComponentPosition {
+    fn from(s: &str) -> Self {
+        if let Some(stripped) = s.strip_suffix("popup.") {
+            Self::Popup(stripped.to_string())
+        } else {
+            match s {
+                "left" => Self::Left,
+                "right" => Self::Right,
+                "center" => Self::Center,
+                _ => Self::Popup(s.to_string()),
+            }
+        }
+    }
+}
+
+impl From<String> for ComponentPosition {
+    fn from(s: String) -> Self {
+        Self::from(s.as_str())
+    }
+}
+
 impl Display for ComponentPosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -242,6 +268,22 @@ impl Display for WidthMode {
         match self {
             Self::Value(value) => write!(f, "{}", value),
             Self::Dyanmic => write!(f, "dynamic"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum RelativePosition {
+    #[default]
+    Before,
+    After,
+}
+
+impl Display for RelativePosition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Before => write!(f, "before"),
+            Self::After => write!(f, "after"),
         }
     }
 }

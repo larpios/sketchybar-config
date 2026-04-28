@@ -95,13 +95,14 @@ impl Bluetooth {
 
         let item = BarItem::new("bluetooth")
             .icon(icon)
-            .label_drawing(ToggleState::Off)
+            .label_props(|p| p.drawing(ToggleState::Off))
             .apply_if(connected_count > 0, |item| {
                 item.label(&format!("{}", connected_count))
-                    .label_drawing(ToggleState::On)
+                    .label_props(|p| p.drawing(ToggleState::On))
             });
 
         item.set()?;
+
         Ok(())
     }
 
@@ -130,22 +131,23 @@ impl Bluetooth {
         central.start_scan(ScanFilter::default()).await?;
 
         // Show "Searching..." indicator at the top
-        let loading = BarItem::new("bluetooth.loading")
-            .icon("󰑐")
-            .label("Searching for nearby devices...")
-            .icon_color(CATPUCCIN_MOCHA.yellow)
-            .label_color(CATPUCCIN_MOCHA.subtext0)
-            .label_font(Font {
+        let loading = BarItem::new_with_pos(
+            "bluetooth.loading",
+            ComponentPosition::Popup("bluetooth".to_string()),
+        )
+        .icon("󰑐")
+        .label("Searching for nearby devices...")
+        .icon_props(|p| p.color(CATPUCCIN_MOCHA.yellow))
+        .label_props(|p| {
+            p.color(CATPUCCIN_MOCHA.subtext0).font(Font {
                 family: "JetBrainsMono Nerd Font".to_string(),
                 style: FontStyle::Italic,
                 size: 11.0,
             })
-            .width(320);
+        })
+        .width(320);
 
-        api::add_special_item("item", "bluetooth.loading", "popup.bluetooth", &loading)?;
-        let _ = Command::new("sketchybar")
-            .args(["--set", "bluetooth.loading", "before=/.*/"])
-            .status();
+        loading.add()?;
 
         use futures::StreamExt;
         let mut events = central.events().await?;
@@ -216,23 +218,22 @@ impl Bluetooth {
             .status();
 
         // MY DEVICES Header
-        let paired_header = BarItem::new("bluetooth.section.paired")
-            .label("MY DEVICES")
-            .label_color(CATPUCCIN_MOCHA.overlay1)
-            .label_font(Font {
+        let paired_header = BarItem::new_with_pos(
+            "bluetooth.section.paired",
+            ComponentPosition::Popup("bluetooth".to_string()),
+        )
+        .label("MY DEVICES")
+        .label_props(|p| {
+            p.color(CATPUCCIN_MOCHA.overlay1).font(Font {
                 family: "JetBrainsMono Nerd Font".into(),
                 style: FontStyle::Bold,
                 size: 10.0,
             })
-            .padding_left(12)
-            .width(320);
+        })
+        .padding_left(12)
+        .width(320);
 
-        api::add_special_item(
-            "item",
-            "bluetooth.section.paired",
-            "popup.bluetooth",
-            &paired_header,
-        )?;
+        paired_header.add()?;
 
         for device in paired {
             Self::render_single_device(device, true).await?;
@@ -250,24 +251,22 @@ impl Bluetooth {
     }
 
     async fn render_nearby_header() -> Result<()> {
-        let nearby_header = BarItem::new("bluetooth.section.nearby")
-            .label("NEARBY DEVICES")
-            .label_color(CATPUCCIN_MOCHA.overlay1)
-            .label_font(Font {
+        let nearby_header = BarItem::new_with_pos(
+            "bluetooth.section.nearby",
+            ComponentPosition::Popup("bluetooth".to_string()),
+        )
+        .label("NEARBY DEVICES")
+        .label_props(|p| {
+            p.color(CATPUCCIN_MOCHA.overlay1).font(Font {
                 family: "JetBrainsMono Nerd Font".into(),
                 style: FontStyle::Bold,
                 size: 10.0,
             })
-            .padding_left(12)
-            .width(320);
+        })
+        .padding_left(12)
+        .width(320);
 
-        api::add_special_item(
-            "item",
-            "bluetooth.section.nearby",
-            "popup.bluetooth",
-            &nearby_header,
-        )?;
-        Ok(())
+        api::add_item(&nearby_header)
     }
 
     async fn render_single_device(device: BluetoothDeviceData, is_paired: bool) -> Result<()> {
@@ -332,21 +331,21 @@ impl Bluetooth {
             toggle_cmd
         );
 
-        let item = BarItem::new(&name)
+        let item = BarItem::new_with_pos(&name, ComponentPosition::Popup("bluetooth".to_string()))
             .icon(icon)
-            .icon_color(icon_color)
+            .icon_props(|p| p.color(icon_color))
             .label(&format!("{} | {}", device.name, status_text))
-            .label_color(label_color)
+            .label_props(|p| p.color(label_color))
             .width(320)
-            .background_color(CATPUCCIN_MOCHA.transparent)
-            .background_height(36)
-            .background_drawing(ToggleState::On)
-            .background_corner_radius(8)
+            .background(|b| {
+                b.color(CATPUCCIN_MOCHA.transparent)
+                    .height(36)
+                    .drawing(ToggleState::On)
+                    .corner_radius(8)
+            })
             .click_script(&click_script);
 
-        api::add_special_item("item", &name, "popup.bluetooth", &item)?;
-
-        Ok(())
+        api::add_item(&item)
     }
 
     pub async fn toggle_device(address: &str) -> Result<()> {
@@ -355,7 +354,7 @@ impl Bluetooth {
         let item_name = format!("bluetooth.device.{}", sanitized_address);
 
         BarItem::new(&item_name)
-            .label_color(Argb::from_u32(0xfffab387))
+            .label_props(|p| p.color(Argb::from_u32(0xfffab387)))
             .label("Processing...")
             .set()?;
 
@@ -385,8 +384,7 @@ impl SketchybarItem for Bluetooth {
     async fn setup(&self, exe_path: &str) -> Result<()> {
         let scan_cmd =
             daemon_send_script(exe_path, &DaemonCmd::UpdateBluetoothPopup { scan: true });
-        let item = BarItem::new("bluetooth")
-            .position(ComponentPosition::Right)
+        let item = BarItem::new_with_pos("bluetooth", ComponentPosition::Right)
             .update_freq(5)
             .script(&format!("{} --update-bluetooth", exe_path))
             .click_script(&format!(
@@ -394,15 +392,17 @@ impl SketchybarItem for Bluetooth {
                 scan_cmd
             ))
             .icon("")
-            .icon_color(CATPUCCIN_MOCHA.blue)
-            .label_drawing(ToggleState::Off)
-            .background_color(CATPUCCIN_MOCHA.surface0)
-            .background_drawing(ToggleState::On)
-            .popup_align(PopupAlign::Center)
-            .popup_background_color(CATPUCCIN_MOCHA.base)
-            .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
-            .popup_background_border_width(2)
-            .popup_background_corner_radius(12);
+            .icon_props(|p| p.color(CATPUCCIN_MOCHA.blue).drawing(ToggleState::On))
+            .label_props(|p| p.drawing(ToggleState::Off))
+            .background(|b| b.color(CATPUCCIN_MOCHA.surface0).drawing(ToggleState::On))
+            .popup(|p| {
+                p.align(PopupAlign::Center).background(|b| {
+                    b.color(CATPUCCIN_MOCHA.base)
+                        .border_color(CATPUCCIN_MOCHA.surface1)
+                        .border_width(2)
+                        .corner_radius(12)
+                })
+            });
 
         item.add()?;
 

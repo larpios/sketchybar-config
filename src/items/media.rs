@@ -4,6 +4,7 @@ use crate::api::item::{
 };
 use crate::api::types::{Argb, Font, FontStyle};
 use crate::api::{self};
+use crate::children;
 use crate::events::Event;
 use crate::items::SketchybarItem;
 use crate::path::data_dir;
@@ -11,11 +12,18 @@ use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::Result;
 use async_trait::async_trait;
 use image::DynamicImage;
+use lazy_static::lazy_static;
 use media_remote::{Controller, NowPlayingJXA};
 use std::env;
-use std::time::Duration;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 const MINIMIZED_WIDTH: u32 = 25;
+const PAUSE_TIMEOUT: Duration = Duration::from_mins(5);
+
+lazy_static! {
+    static ref PAUSE_INSTANT: Mutex<Option<Instant>> = Mutex::new(None);
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct MediaData {
@@ -49,8 +57,8 @@ impl Media {
 
         if let Some(info) = info {
             return Ok(MediaData {
-                title: info.title.clone().unwrap_or_else(|| "Unknown".into()),
-                artist: info.artist.clone().unwrap_or_else(|| "Unknown".into()),
+                title: info.title.clone().unwrap_or_default(),
+                artist: info.artist.clone().unwrap_or_default(),
                 album: info.album.clone().unwrap_or_default(),
                 duration: info.duration.unwrap_or_default(),
                 elapsed_time: info.elapsed_time.unwrap_or_default(),
@@ -90,24 +98,35 @@ impl Media {
 
         let data = Self::fetch()?;
 
+        let mut pause_guard = PAUSE_INSTANT.lock().unwrap();
+        let should_show = if data.is_playing {
+            *pause_guard = None;
+            true
+        } else if !data.title.is_empty() {
+            let pause_at = pause_guard.get_or_insert_with(Instant::now);
+            pause_at.elapsed() < PAUSE_TIMEOUT
+        } else {
+            *pause_guard = None;
+            false
+        };
+
         // Main item
-        if data.title.is_empty() && data.artist.is_empty() {
-            BarItem::new("media")
+        if !should_show {
+            BarItem::new_with_pos("media", ComponentPosition::Left)
                 .width(MINIMIZED_WIDTH)
-                .label_drawing(ToggleState::Off)
+                .label_props(|p| p.drawing(ToggleState::Off))
                 .animate_set("sin", 15)?;
 
             return Ok(());
         }
 
-        let media_item = BarItem::new("media")
+        let media_item = BarItem::new_with_pos("media", ComponentPosition::Left)
             .drawing(ToggleState::On)
             .width(240)
             .label(&data.title)
-            .label_max_chars(28)
+            .label_props(|p| p.max_chars(28).drawing(ToggleState::On))
             .scroll_texts(ToggleState::On)
-            .label_drawing(ToggleState::On)
-            .icon_drawing(ToggleState::On);
+            .icon_props(|p| p.drawing(ToggleState::On));
 
         media_item.animate_set("sin", 15)?;
 
@@ -121,27 +140,32 @@ impl Media {
         // Popups
         BarItem::new("media.cover")
             .drawing(ToggleState::On)
-            .background_image(ImageType::Path(artwork_path.display().to_string()))
-            .background_image_drawing(ToggleState::On)
+            .background(|b| {
+                b.image(
+                    ImageType::Path(artwork_path.display().to_string())
+                        .into_props()
+                        .drawing(ToggleState::On),
+                )
+            })
             .set()?;
 
         BarItem::new("media.title")
             .label(&data.title)
-            .label_drawing(ToggleState::On)
+            .label_props(|p| p.drawing(ToggleState::On))
             .set()?;
         BarItem::new("media.artist")
             .label(&data.artist)
-            .label_drawing(ToggleState::On)
+            .label_props(|p| p.drawing(ToggleState::On))
             .set()?;
         BarItem::new("media.progress")
             .label(&data.formatted_progress())
-            .label_drawing(ToggleState::On)
+            .label_props(|p| p.drawing(ToggleState::On))
             .set()?;
 
-        let play_icon = if !data.is_playing { "󰏤" } else { "󰐎" };
+        let play_icon = if data.is_playing { "󰏤" } else { "󰐎" };
         BarItem::new("media.play")
             .icon(play_icon)
-            .icon_drawing(ToggleState::On)
+            .icon_props(|p| p.drawing(ToggleState::On))
             .set()?;
 
         Ok(())
@@ -151,111 +175,127 @@ impl Media {
 #[async_trait]
 impl SketchybarItem for Media {
     async fn setup(&self, exe_path: &str) -> Result<()> {
-        let item = BarItem::new("media")
-            .position(ComponentPosition::Left)
+        let item = BarItem::new_with_pos("media", ComponentPosition::Left)
             .update_freq(0)
             .script(&format!("{} --update-media", exe_path))
             .click_script("sketchybar --animate sin 15 --set media popup.drawing=toggle")
             .icon("󰎆")
-            .icon_color(CATPUCCIN_MOCHA.green)
+            .icon_props(|p| p.color(CATPUCCIN_MOCHA.green))
             .width(MINIMIZED_WIDTH)
-            .background_color(CATPUCCIN_MOCHA.surface0)
-            .background_drawing(ToggleState::On)
-            .background_image(ImageType::MediaArtwork)
-            .background_image_drawing(ToggleState::On)
-            .background_image_scale(0.15)
-            .background_image_corner_radius(4)
+            .background(|b| {
+                b.color(CATPUCCIN_MOCHA.surface0)
+                    .drawing(ToggleState::On)
+                    .image(
+                        ImageType::MediaArtwork
+                            .into_props()
+                            .drawing(ToggleState::On)
+                            .scale(0.15)
+                            .corner_radius(4),
+                    )
+            })
             .padding_left(10)
             .padding_right(10)
-            .popup_align(PopupAlign::Center)
-            .popup_background_color(CATPUCCIN_MOCHA.base)
-            .popup_background_image(ImageType::MediaArtwork)
-            .popup_background_image_blur_radius(50)
-            .popup_background_image_drawing(ToggleState::On)
-            .popup_background_corner_radius(12)
-            .popup_background_border_width(2)
-            .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
-            .add_item(
+            .popup(|p| {
+                p.align(PopupAlign::Center)
+                    .background(|b| b.color(CATPUCCIN_MOCHA.base))
+                    .background(|b| {
+                        b.image(
+                            ImageType::MediaArtwork
+                                .into_props()
+                                .blur_radius(50)
+                                .drawing(ToggleState::On),
+                        )
+                        .corner_radius(12)
+                        .border_width(2)
+                        .border_color(CATPUCCIN_MOCHA.surface1)
+                    })
+            })
+            .with_children(children![
                 BarItem::new("media.cover")
-                    .background_image(ImageType::MediaArtwork)
-                    .background_image_drawing(ToggleState::On)
-                    .background_image_scale(0.5)
-                    .background_image_corner_radius(12)
-                    .background_height(140)
+                    .background(|b| {
+                        b.image(
+                            ImageType::MediaArtwork
+                                .into_props()
+                                .drawing(ToggleState::On)
+                                .scale(0.5)
+                                .corner_radius(12),
+                        )
+                        .height(140)
+                    })
                     .padding_left(10)
                     .padding_right(10)
                     .width(240)
-                    .text_align(TextAlignment::Center),
-            )
-            .add_item(
+                    .text(|t| t.align(TextAlignment::Center)),
                 BarItem::new("media.title")
-                    .label_font(Font {
-                        family: "JetBrainsMono Nerd Font".to_string(),
-                        size: 14.0,
-                        style: FontStyle::Bold,
+                    .label_props(|p| {
+                        p.font(Font {
+                            family: "JetBrainsMono Nerd Font".to_string(),
+                            size: 14.0,
+                            style: FontStyle::Bold,
+                        })
+                        .max_chars(25)
                     })
-                    .label_max_chars(25)
                     .scroll_texts(ToggleState::On)
                     .width(240)
-                    .text_align(TextAlignment::Center),
-            )
-            .add_item(
+                    .text(|t| t.align(TextAlignment::Center)),
                 BarItem::new("media.artist")
-                    .label_font(Font {
-                        family: "JetBrainsMono Nerd Font".to_string(),
-                        size: 13.0,
-                        style: FontStyle::Regular,
+                    .label_props(|p| {
+                        p.font(Font {
+                            family: "JetBrainsMono Nerd Font".to_string(),
+                            size: 13.0,
+                            style: FontStyle::Regular,
+                        })
+                        .color(Argb::from_u32(0xffbac2de))
                     })
-                    .label_color(Argb::from_u32(0xffbac2de))
                     .width(240)
-                    .text_align(TextAlignment::Center),
-            )
-            .add_item(
+                    .text(|t| t.align(TextAlignment::Center)),
                 BarItem::new("media.progress")
-                    .label_font(Font {
-                        family: "JetBrainsMono Nerd Font".to_string(),
-                        size: 12.0,
-                        style: FontStyle::Regular,
+                    .label_props(|p| {
+                        p.font(Font {
+                            family: "JetBrainsMono Nerd Font".to_string(),
+                            size: 12.0,
+                            style: FontStyle::Regular,
+                        })
                     })
                     .width(240)
-                    .text_align(TextAlignment::Center),
-            )
-            .add_item(
+                    .text(|t| t.align(TextAlignment::Center)),
                 BarItem::new("media.prev")
                     .icon("󰒮")
-                    .icon_font(Font {
-                        family: "JetBrainsMono Nerd Font".to_string(),
-                        size: 20.0,
-                        style: FontStyle::Regular,
+                    .icon_props(|p| {
+                        p.font(Font {
+                            family: "JetBrainsMono Nerd Font".to_string(),
+                            size: 20.0,
+                            style: FontStyle::Regular,
+                        })
                     })
                     .width(80)
-                    .text_align(TextAlignment::Center)
+                    .text(|t| t.align(TextAlignment::Center))
                     .click_script(&format!("{} --update-media", exe_path)),
-            )
-            .add_item(
                 BarItem::new("media.play")
                     .icon("󰐎")
-                    .icon_font(Font {
-                        family: "JetBrainsMono Nerd Font".to_string(),
-                        size: 24.0,
-                        style: FontStyle::Regular,
+                    .icon_props(|p| {
+                        p.font(Font {
+                            family: "JetBrainsMono Nerd Font".to_string(),
+                            size: 24.0,
+                            style: FontStyle::Regular,
+                        })
                     })
                     .width(80)
-                    .text_align(TextAlignment::Center)
+                    .text(|t| t.align(TextAlignment::Center))
                     .click_script(&format!("{} --update-media", exe_path)),
-            )
-            .add_item(
                 BarItem::new("media.next")
                     .icon("󰒭")
-                    .icon_font(Font {
-                        family: "JetBrainsMono Nerd Font".to_string(),
-                        size: 20.0,
-                        style: FontStyle::Regular,
+                    .icon_props(|p| {
+                        p.font(Font {
+                            family: "JetBrainsMono Nerd Font".to_string(),
+                            size: 20.0,
+                            style: FontStyle::Regular,
+                        })
                     })
                     .width(80)
-                    .text_align(TextAlignment::Center)
+                    .text(|t| t.align(TextAlignment::Center))
                     .click_script(&format!("{} --update-media", exe_path)),
-            );
+            ]);
 
         api::add_event("media_update")?;
         item.add()?;

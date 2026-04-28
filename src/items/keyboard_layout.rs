@@ -1,3 +1,4 @@
+use crate::api::item::ItemBuilder;
 use crate::events::Event;
 use crate::items::SketchybarItem;
 use anyhow::Result;
@@ -110,7 +111,7 @@ impl KeyboardLayout {
     }
 
     pub fn update_items(data: &KeyboardLayoutData) -> Result<()> {
-        use crate::api::item::{BarItem, ItemBuilder};
+        use crate::api::item::BarItem;
 
         BarItem::new("keyboard_layout").label(&data.name).set()?;
 
@@ -125,13 +126,11 @@ impl SketchybarItem for KeyboardLayout {
         use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, ToggleState};
         use crate::themes::CATPUCCIN_MOCHA;
 
-        let item = BarItem::new("keyboard_layout")
-            .position(ComponentPosition::Right)
+        let item = BarItem::new_with_pos("keyboard_layout", ComponentPosition::Right)
             .script(&format!("{} --update-keyboard-layout", exe_path))
             .icon("󰌌")
-            .icon_color(CATPUCCIN_MOCHA.lavender)
-            .background_color(CATPUCCIN_MOCHA.surface0)
-            .background_drawing(ToggleState::On);
+            .icon_props(|p| p.color(CATPUCCIN_MOCHA.lavender))
+            .background(|b| b.color(CATPUCCIN_MOCHA.surface0).drawing(ToggleState::On));
 
         item.add()?;
         crate::api::add_event("keyboard_layout_change")?;

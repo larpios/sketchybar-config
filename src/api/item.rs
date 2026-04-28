@@ -1,27 +1,51 @@
 pub use crate::api::builder::ItemBuilder;
-use crate::api::components::Space;
 pub use crate::api::props::*;
 use anyhow::Result;
 
 #[derive(Debug, Clone)]
-pub enum ChildComponent {
+pub enum PopupChild {
     Item(Box<BarItem>),
     Slider(Box<Slider>),
-    Space(Space),
+}
+
+impl From<BarItem> for PopupChild {
+    fn from(item: BarItem) -> Self {
+        Self::Item(Box::new(item))
+    }
+}
+
+impl From<Slider> for PopupChild {
+    fn from(slider: Slider) -> Self {
+        Self::Slider(Box::new(slider))
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct BarItem {
     pub name: String,
     pub props: ItemProps,
-    pub children: Vec<ChildComponent>,
+    pub children: Vec<PopupChild>,
 }
 
 impl BarItem {
     pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
-            props: ItemProps::default(),
+            props: Default::default(),
+            children: Vec::new(),
+        }
+    }
+
+    pub fn new_with_pos(name: &str, position: ComponentPosition) -> Self {
+        Self {
+            name: name.to_string(),
+            props: ItemProps {
+                geometry: Geometry {
+                    position: Some(position),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
             children: Vec::new(),
         }
     }
@@ -46,22 +70,22 @@ impl BarItem {
         crate::api::subscribe(&self.name, events)
     }
 
-    pub fn add_item(mut self, item: BarItem) -> Self {
-        self.children.push(ChildComponent::Item(Box::new(item)));
+    pub fn with_children<I: IntoIterator<Item = PopupChild>>(mut self, children: I) -> Self {
+        self.children.extend(children);
         self
     }
 
-    pub fn add_space(mut self, space: Space) -> Self {
-        self.children.push(ChildComponent::Space(space));
+    pub fn add_item(mut self, item: BarItem) -> Self {
+        self.children.push(PopupChild::Item(Box::new(item)));
         self
     }
 
     pub fn add_slider(mut self, slider: Slider) -> Self {
-        self.children.push(ChildComponent::Slider(Box::new(slider)));
+        self.children.push(PopupChild::Slider(Box::new(slider)));
         self
     }
 
-    pub fn add_child(mut self, child: ChildComponent) -> Self {
+    pub fn add_child(mut self, child: PopupChild) -> Self {
         self.children.push(child);
         self
     }
@@ -82,6 +106,7 @@ impl ItemBuilder for BarItem {
 #[derive(Debug, Clone, Default)]
 pub struct Slider {
     pub name: String,
+    pub position: ComponentPosition,
     pub width: Option<u32>,
     pub percentage: Option<u32>,
     pub highlight_color: Option<Argb>,
@@ -93,8 +118,13 @@ pub struct Slider {
 
 impl Slider {
     pub fn new(name: &str) -> Self {
+        Self::new_with_pos(name, ComponentPosition::Left)
+    }
+
+    pub fn new_with_pos(name: &str, position: ComponentPosition) -> Self {
         Self {
             name: name.to_string(),
+            position,
             ..Default::default()
         }
     }
@@ -122,18 +152,11 @@ impl Slider {
         self
     }
 
-    pub fn knob_color(mut self, color: Argb) -> Self {
-        self.knob_props.get_or_insert_default().color = Some(color);
-        self
-    }
-
-    pub fn knob_highlight(mut self, highlight: ToggleState) -> Self {
-        self.knob_props.get_or_insert_default().highlight = Some(highlight);
-        self
-    }
-
-    pub fn knob_font(mut self, font: Font) -> Self {
-        self.knob_props.get_or_insert_default().font = Some(font);
+    pub fn knob_props<F>(mut self, f: F) -> Self
+    where
+        F: FnOnce(Text) -> Text,
+    {
+        self.knob_props = Some(f(self.knob_props.take().unwrap_or_default()));
         self
     }
 
@@ -142,23 +165,11 @@ impl Slider {
         self
     }
 
-    pub fn slider_background_color(mut self, color: Argb) -> Self {
-        self.background.get_or_insert_default().color = Some(color);
-        self
-    }
-
-    pub fn slider_background_height(mut self, height: u32) -> Self {
-        self.background.get_or_insert_default().height = Some(height);
-        self
-    }
-
-    pub fn slider_background_corner_radius(mut self, radius: u32) -> Self {
-        self.background.get_or_insert_default().corner_radius = Some(radius);
-        self
-    }
-
-    pub fn slider_background_drawing(mut self, drawing: ToggleState) -> Self {
-        self.background.get_or_insert_default().drawing = Some(drawing);
+    pub fn slider_background<F>(mut self, f: F) -> Self
+    where
+        F: FnOnce(BackgroundProps) -> BackgroundProps,
+    {
+        self.background = Some(f(self.background.take().unwrap_or_default()));
         self
     }
 }

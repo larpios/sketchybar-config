@@ -1,3 +1,4 @@
+use crate::api::components::Bracket;
 use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, ToggleState};
 use crate::events::Event;
 use crate::items::SketchybarItem;
@@ -35,11 +36,13 @@ impl Workspaces {
             let inactive_icon = CATPUCCIN_MOCHA.text;
 
             BarItem::new(&ws_name)
-                .background_color(if is_active { active_bg } else { inactive_bg })
-                .icon_color(if is_active {
-                    active_icon
-                } else {
-                    inactive_icon
+                .background(|b| b.color(if is_active { active_bg } else { inactive_bg }))
+                .icon_props(|t| {
+                    t.color(if is_active {
+                        active_icon
+                    } else {
+                        inactive_icon
+                    })
                 })
                 .set()?;
         }
@@ -56,10 +59,14 @@ impl SketchybarItem for Workspaces {
             let mut item = BarItem::new(&ws_name)
                 .position(ComponentPosition::Left)
                 .icon(&i.to_string())
-                .background_color(CATPUCCIN_MOCHA.surface1)
-                .background_corner_radius(6)
-                .background_drawing(ToggleState::On)
-                .label_drawing(ToggleState::Off)
+                .padding_left(0)
+                .padding_right(0)
+                .background(|b| {
+                    b.color(CATPUCCIN_MOCHA.surface1)
+                        .corner_radius(6)
+                        .drawing(ToggleState::On)
+                })
+                .label_props(|t| t.drawing(ToggleState::Off))
                 .click_script(&format!(
                     "aerospace workspace {} && {} --update-workspaces",
                     i, exe_path
@@ -71,6 +78,16 @@ impl SketchybarItem for Workspaces {
 
             item.add()?;
         }
+
+        let bracket = Bracket::new("workspaces");
+        let _bracket = (1..=9)
+            .fold(bracket, |b, i| b.add_member(format!("workspace.{}", i)))
+            .background_color(CATPUCCIN_MOCHA.surface1)
+            .background_drawing(ToggleState::On)
+            .background_corner_radius(6)
+            .padding_left(0)
+            .padding_right(0)
+            .add();
 
         use crate::api::event::BarEvent;
 

@@ -1,3 +1,4 @@
+use crate::api::item::ItemBuilder;
 use crate::events::Event;
 use crate::items::SketchybarItem;
 use anyhow::Result;
@@ -40,7 +41,7 @@ impl Weather {
     }
 
     pub fn update_items(data: &WeatherData) -> anyhow::Result<()> {
-        use crate::api::item::{BarItem, ItemBuilder};
+        use crate::api::item::BarItem;
 
         BarItem::new("weather").label(&data.temp).set()?;
 
@@ -54,15 +55,13 @@ impl SketchybarItem for Weather {
         use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, ToggleState};
         use crate::themes::CATPUCCIN_MOCHA;
 
-        let item = BarItem::new("weather")
-            .position(ComponentPosition::Right)
+        let item = BarItem::new_with_pos("weather", ComponentPosition::Right)
             .update_freq(300)
             .script(&format!("{} --update-weather", exe_path))
             .click_script("open 'https://weather.com'")
             .icon("")
-            .icon_color(CATPUCCIN_MOCHA.yellow)
-            .background_color(CATPUCCIN_MOCHA.surface0)
-            .background_drawing(ToggleState::On);
+            .icon_props(|p| p.color(CATPUCCIN_MOCHA.yellow))
+            .background(|b| b.color(CATPUCCIN_MOCHA.surface0).drawing(ToggleState::On));
 
         item.add()?;
 

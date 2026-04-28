@@ -77,18 +77,28 @@ pub fn watch(bus: EventBus) -> anyhow::Result<()> {
         *global_bus = Some(bus.clone());
     }
 
-    // Heartbeat for progress bar (only triggers when playing)
+    // Heartbeat for progress bar
     let bus_heartbeat = bus.clone();
     thread::spawn(move || {
+        let mut last_had_info = false;
+        let mut last_playing = false;
         loop {
             let now_playing = NowPlayingJXA::new(Duration::from_secs(1));
             let guard = now_playing.get_info();
             let info = guard.as_ref();
+            let has_info = info.is_some();
+            let is_playing = info.as_ref().and_then(|i| i.is_playing).unwrap_or(false);
 
-            if info.is_some_and(|info| info.is_playing.unwrap_or_default()) {
+            // Update if:
+            // 1. Currently playing (for progress bar)
+            // 2. Just stopped playing (to update icon/state)
+            // 3. Media source appeared or disappeared
+            if is_playing || last_playing || has_info != last_had_info {
                 let _ = bus_heartbeat.send(Event::UpdateMedia);
             }
 
+            last_playing = is_playing;
+            last_had_info = has_info;
             thread::sleep(Duration::from_millis(1000));
         }
     });

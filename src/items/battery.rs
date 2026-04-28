@@ -1,5 +1,10 @@
+use crate::api::event::BarEvent;
+use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign};
+use crate::api::types::ToggleState;
+use crate::children;
 use crate::events::Event;
 use crate::items::SketchybarItem;
+use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::Result;
 use async_trait::async_trait;
 use std::process::Command;
@@ -170,9 +175,6 @@ impl Battery {
     }
 
     pub fn update_items(data: &BatteryData) -> anyhow::Result<()> {
-        use crate::api::item::{BarItem, ItemBuilder};
-        use crate::api::types::ToggleState;
-
         let label = if let Some(percentage) = data.percentage {
             format!("{}%", percentage)
         } else {
@@ -206,28 +208,25 @@ impl SketchybarItem for Battery {
     async fn setup(&self, exe_path: &str) -> Result<()> {
         let battery_data = Self::fetch()?;
 
-        use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign};
-        use crate::api::types::ToggleState;
-        use crate::themes::CATPUCCIN_MOCHA;
-
-        let item = BarItem::new("battery")
-            .position(ComponentPosition::Right)
+        let item = BarItem::new_with_pos("battery", ComponentPosition::Right)
             .drawing(ToggleState::On)
             .update_freq(60)
             .script(&format!("{} --update-battery", exe_path))
             .click_script("sketchybar --animate sin 15 --set battery popup.drawing=toggle")
-            .background_color(CATPUCCIN_MOCHA.surface0)
-            .background_drawing(ToggleState::On)
-            .popup_align(PopupAlign::Center)
-            .popup_background_color(CATPUCCIN_MOCHA.base)
-            .popup_background_corner_radius(8)
-            .popup_background_border_width(2)
-            .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
-            .add_item(BarItem::new("battery.status").icon("Status:"))
-            .add_item(BarItem::new("battery.wattage").icon("Power:"))
-            .add_item(BarItem::new("battery.health").icon("Health:"));
-
-        use crate::api::event::BarEvent;
+            .background(|b| b.color(CATPUCCIN_MOCHA.surface0).drawing(ToggleState::On))
+            .popup(|p| {
+                p.align(PopupAlign::Center).background(|b| {
+                    b.color(CATPUCCIN_MOCHA.base)
+                        .border_width(2)
+                        .border_color(CATPUCCIN_MOCHA.surface1)
+                        .corner_radius(8)
+                })
+            })
+            .with_children(children![
+                BarItem::new("battery.status").icon("Status:"),
+                BarItem::new("battery.wattage").icon("Power:"),
+                BarItem::new("battery.health").icon("Health:"),
+            ]);
 
         item.add()?;
         item.subscribe([BarEvent::SystemWoke, BarEvent::PowerSourceChange])?;

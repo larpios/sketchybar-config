@@ -191,29 +191,31 @@ impl Network {
             },
         );
 
-        let toggle_item = BarItem::new("network.toggle")
+        let popup_pos = ComponentPosition::Popup("network".to_string());
+
+        let toggle_item = BarItem::new_with_pos("network.toggle", popup_pos.clone())
             .icon(toggle_icon)
-            .icon_color(toggle_color)
+            .icon_props(|p| p.color(toggle_color))
             .label("Wi-Fi")
             .width(250)
             .padding_left(8)
             .click_script(&toggle_script);
 
-        api::add_special_item("item", "network.toggle", "popup.network", &toggle_item)?;
+        api::add_item(&toggle_item)?;
 
         if !data.is_wifi_on {
             return Ok(());
         }
 
         // Show loading indicator while scanning
-        let loading = BarItem::new("network.loading")
+        let loading = BarItem::new_with_pos("network.loading", popup_pos)
             .icon("󰑐")
-            .icon_color(CATPUCCIN_MOCHA.yellow)
+            .icon_props(|p| p.color(CATPUCCIN_MOCHA.yellow))
             .label("Scanning…")
             .width(250)
             .padding_left(8);
 
-        api::add_special_item("item", "network.loading", "popup.network", &loading)?;
+        api::add_item(&loading)?;
 
         // Blocking scan
         let networks = Self::scan_networks(&data.device).await.unwrap_or_default();
@@ -374,19 +376,19 @@ impl Network {
     }
 
     fn render_section_header(name: &str, label: &str) -> Result<()> {
-        let header = BarItem::new(name)
+        let header = BarItem::new_with_pos(name, ComponentPosition::Popup("network".to_string()))
             .label(label)
-            .label_color(CATPUCCIN_MOCHA.overlay1)
-            .label_font(Font {
-                family: "JetBrainsMono Nerd Font".into(),
-                style: FontStyle::Bold,
-                size: 10.0,
+            .label_props(|p| {
+                p.color(CATPUCCIN_MOCHA.overlay1).font(Font {
+                    family: "JetBrainsMono Nerd Font".into(),
+                    style: FontStyle::Bold,
+                    size: 10.0,
+                })
             })
             .padding_left(8)
             .width(250);
 
-        api::add_special_item("item", name, "popup.network", &header)?;
-        Ok(())
+        api::add_item(&header)
     }
 
     fn render_single_network(network: WifiNetwork, device: &str, exe_path: &str) -> Result<()> {
@@ -418,18 +420,20 @@ impl Network {
             connect_script
         );
 
-        let item = BarItem::new(&name)
+        let item = BarItem::new_with_pos(&name, ComponentPosition::Popup("network".to_string()))
             .icon(icon)
             .label(&network.ssid)
             .width(250)
             .padding_left(8)
-            .background_color(CATPUCCIN_MOCHA.transparent)
-            .background_height(28)
-            .background_drawing(ToggleState::On)
-            .background_corner_radius(6)
+            .background(|b| {
+                b.color(CATPUCCIN_MOCHA.transparent)
+                    .height(28)
+                    .drawing(ToggleState::On)
+                    .corner_radius(6)
+            })
             .click_script(&click_script);
 
-        api::add_special_item("item", &name, "popup.network", &item)?;
+        api::add_item(&item)?;
         api::subscribe(&name, [BarEvent::MouseEntered, BarEvent::MouseExited])?;
 
         Ok(())
@@ -441,22 +445,23 @@ impl SketchybarItem for Network {
     async fn setup(&self, exe_path: &str) -> Result<()> {
         let popup_cmd = daemon_send_script(exe_path, &DaemonCmd::UpdateNetworkPopup);
 
-        let item = BarItem::new("network")
-            .position(ComponentPosition::Right)
+        let item = BarItem::new_with_pos("network", ComponentPosition::Right)
             .update_freq(10)
             .script(&format!("{} --update-network", exe_path))
             .click_script(&format!(
                 "sketchybar --animate sin 15 --set network popup.drawing=toggle; {}",
                 popup_cmd
             ))
-            .label_drawing(ToggleState::Off)
-            .background_color(CATPUCCIN_MOCHA.surface0)
-            .background_drawing(ToggleState::On)
-            .popup_align(PopupAlign::Right)
-            .popup_background_color(CATPUCCIN_MOCHA.base)
-            .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
-            .popup_background_border_width(2)
-            .popup_background_corner_radius(12);
+            .label_props(|p| p.drawing(ToggleState::Off))
+            .background(|b| b.color(CATPUCCIN_MOCHA.surface0).drawing(ToggleState::On))
+            .popup(|p| {
+                p.align(PopupAlign::Right).background(|b| {
+                    b.color(CATPUCCIN_MOCHA.base)
+                        .border_color(CATPUCCIN_MOCHA.surface1)
+                        .border_width(2)
+                        .corner_radius(12)
+                })
+            });
 
         item.add()?;
         item.subscribe([BarEvent::WifiChange])?;

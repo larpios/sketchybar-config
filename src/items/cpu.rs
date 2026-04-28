@@ -1,48 +1,26 @@
+use crate::api::item::{BarItem, ItemBuilder};
 use crate::events::Event;
 use crate::items::SketchybarItem;
 use anyhow::Result;
 use async_trait::async_trait;
-use lazy_static::lazy_static;
-use std::{sync::Mutex, thread, time::Duration};
-use sysinfo::{CpuRefreshKind, System};
-
-lazy_static! {
-    static ref SYS: Mutex<System> = Mutex::new(System::new_all());
-}
-
-#[derive(Debug, Clone)]
-pub struct CpuData {
-    pub load: u8,
-}
+use sysinfo::System;
 
 pub struct Cpu;
 
 impl Cpu {
-    pub(super) fn update_command() -> Result<()> {
-        let data = Self::fetch()?;
-        Self::update_items(&data)
-    }
-    pub(super) fn fetch() -> anyhow::Result<CpuData> {
-        let mut sys = SYS
-            .lock()
-            .map_err(|_| anyhow::anyhow!("SYS mutex poisoned"))?;
+    pub fn update_command() -> Result<()> {
+        let mut sys = System::new_all();
+        sys.refresh_cpu_all();
 
-        sys.refresh_cpu_specifics(CpuRefreshKind::everything());
-
-        thread::sleep(Duration::from_millis(200));
-
-        sys.refresh_cpu_specifics(CpuRefreshKind::everything());
-
-        let load = (sys.global_cpu_usage().round() as u8).clamp(0, 100);
-
-        Ok(CpuData { load })
-    }
-
-    pub(super) fn update_items(data: &CpuData) -> anyhow::Result<()> {
-        use crate::api::item::{BarItem, ItemBuilder};
+        let mut total_usage = 0.0;
+        let cpus = sys.cpus();
+        for cpu in cpus {
+            total_usage += cpu.cpu_usage();
+        }
+        let avg_usage = total_usage / cpus.len() as f32;
 
         BarItem::new("cpu")
-            .label(&format!("{}%", data.load))
+            .label(&format!("{:.0}%", avg_usage))
             .set()?;
 
         Ok(())
@@ -55,20 +33,16 @@ impl SketchybarItem for Cpu {
         use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, ToggleState};
         use crate::themes::CATPUCCIN_MOCHA;
 
-        let item = BarItem::new("cpu")
-            .position(ComponentPosition::Right)
+        let item = BarItem::new_with_pos("cpu", ComponentPosition::Right)
             .update_freq(2)
             .script(&format!("{} --update-cpu", exe_path))
             .icon("")
-            .icon_color(CATPUCCIN_MOCHA.red)
-            .background_color(CATPUCCIN_MOCHA.surface0)
-            .background_drawing(ToggleState::On);
+            .icon_props(|p| p.color(CATPUCCIN_MOCHA.red))
+            .background(|b| b.color(CATPUCCIN_MOCHA.surface0).drawing(ToggleState::On));
 
         item.add()?;
 
-        // Initial update
-        let data = Self::fetch()?;
-        Self::update_items(&data)?;
+        Self::update_command()?;
 
         Ok(())
     }
