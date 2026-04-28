@@ -1,4 +1,5 @@
 use crate::events::{Event, EventBus};
+use crate::items::media::PAUSE_TIMEOUT;
 use core_foundation::base::TCFType;
 use core_foundation::runloop::{CFRunLoop, kCFRunLoopDefaultMode};
 use core_foundation::string::CFString;
@@ -8,7 +9,7 @@ use std::os::raw::c_void;
 use std::ptr;
 use std::sync::Mutex;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 lazy_static! {
     static ref GLOBAL_BUS: Mutex<Option<EventBus>> = Mutex::new(None);
@@ -81,7 +82,7 @@ pub fn watch(bus: EventBus) -> anyhow::Result<()> {
     let bus_heartbeat = bus.clone();
     thread::spawn(move || {
         let mut last_had_info = false;
-        let mut last_playing = false;
+        let mut last_activity = Instant::now();
         loop {
             let now_playing = NowPlayingJXA::new(Duration::from_secs(1));
             let guard = now_playing.get_info();
@@ -89,15 +90,18 @@ pub fn watch(bus: EventBus) -> anyhow::Result<()> {
             let has_info = info.is_some();
             let is_playing = info.as_ref().and_then(|i| i.is_playing).unwrap_or(false);
 
-            // Update if:
-            // 1. Currently playing (for progress bar)
-            // 2. Just stopped playing (to update icon/state)
-            // 3. Media source appeared or disappeared
-            if is_playing || last_playing || has_info != last_had_info {
+            if is_playing || has_info != last_had_info {
+                last_activity = Instant::now();
+            }
+
+            let should_update = is_playing
+                || has_info != last_had_info
+                || (has_info && last_activity.elapsed() < PAUSE_TIMEOUT + Duration::from_secs(5));
+
+            if should_update {
                 let _ = bus_heartbeat.send(Event::UpdateMedia);
             }
 
-            last_playing = is_playing;
             last_had_info = has_info;
             thread::sleep(Duration::from_millis(1000));
         }

@@ -23,7 +23,7 @@ impl SketchybarItem for Apple {
             .background(|b| b.drawing(ToggleState::Off))
             .label_props(|p| p.drawing(ToggleState::Off))
             .padding_right(15)
-            .click_script("sketchybar -m --animate sin 15 --set $NAME popup.drawing=toggle")
+            .click_script("sketchybar --animate sin 15 --set $NAME popup.drawing=toggle")
             .popup(|p| {
                 p.drawing(ToggleState::Off)
                     .align(PopupAlign::Left)
@@ -133,7 +133,7 @@ fn menu_item(name: &str, label: &str, command: &str) -> BarItem {
         })
         .script(&script)
         .click_script(&format!(
-            "sketchybar -m --animate sin 15 --set apple.logo popup.drawing=off && {}",
+            "sketchybar --animate sin 15 --set apple.logo popup.drawing=off && {}",
             command
         ))
 }
