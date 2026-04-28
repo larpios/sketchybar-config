@@ -42,7 +42,9 @@ pub async fn handle_command(cmd: &str) -> Result<Option<()>> {
         "--update-weather" => Ok(Some(weather::Weather::update_command()?)),
         "--update-battery" => Ok(Some(battery::Battery::update_command()?)),
         "--update-cpu" => Ok(Some(cpu::Cpu::update_command()?)),
-        "--update-keyboard-layout" => Ok(Some(keyboard_layout::KeyboardLayout::update_command()?)),
+        "--update-keyboard-layout" => {
+            Ok(Some(keyboard_layout::KeyboardLayout::update_command(None)?))
+        }
         "--update-network" => Ok(Some(network::Network::update_command()?)),
         "--update-volume" => Ok(Some(volume::Volume::update_command()?)),
         "--update-media" => Ok(Some(media::Media::update_command()?)),

@@ -7,7 +7,7 @@ pub enum Event {
     UpdateWeather,
     UpdateBattery,
     UpdateCpu,
-    UpdateKeyboardLayout,
+    UpdateKeyboardLayout { source_id: Option<String> },
     UpdateNetwork,
     UpdateVolume,
     UpdateMedia,

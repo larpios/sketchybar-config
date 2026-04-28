@@ -96,12 +96,15 @@ impl KeyboardLayout {
         })
     }
 
-    pub fn update_command() -> Result<()> {
+    pub fn update_command(source_id: Option<String>) -> Result<()> {
         // When triggered by sketchybar, $INFO carries the bundle ID read in
         // the watcher process. Sketchybar passes it as command-line arg INFO=value.
-        let name = match std::env::var("INFO") {
-            Ok(info) if !info.is_empty() => source_id_to_code(&info),
-            _ => fetch_via_plist(),
+        let name = match source_id {
+            Some(info) if !info.is_empty() => source_id_to_code(&info),
+            _ => match std::env::var("INFO") {
+                Ok(info) if !info.is_empty() => source_id_to_code(&info),
+                _ => fetch_via_plist(),
+            },
         };
         Self::update_items(&KeyboardLayoutData { name })
     }
@@ -143,8 +146,8 @@ impl SketchybarItem for KeyboardLayout {
     async fn spawn_background_task(&self, mut bus: tokio::sync::broadcast::Receiver<Event>) {
         tokio::spawn(async move {
             while let Ok(event) = bus.recv().await {
-                if matches!(event, Event::UpdateKeyboardLayout)
-                    && let Err(e) = Self::update_command()
+                if let Event::UpdateKeyboardLayout { source_id } = event
+                    && let Err(e) = Self::update_command(source_id)
                 {
                     eprintln!("[keyboard_layout] update error: {e}");
                 }

@@ -28,9 +28,15 @@ async fn main() -> Result<()> {
                 item.spawn_background_task(bus.subscribe()).await;
             }
 
-            return daemon::run(bus).await;
-        }
+            let bus_clone = bus.clone();
+            tokio::spawn(async move {
+                if let Err(e) = daemon::run(bus_clone).await {
+                    eprintln!("[daemon] error: {e}");
+                }
+            });
 
+            return watcher::watch(bus);
+        }
         // Send a command to the running daemon
         if args[1] == "--send" {
             if let Some(json) = args.get(2)
@@ -39,11 +45,6 @@ async fn main() -> Result<()> {
                 eprintln!("[send] daemon unavailable: {e}");
             }
             return Ok(());
-        }
-
-        // Handle media watcher
-        if args[1] == "--watcher" {
-            return watcher::watch_media();
         }
 
         // Handle all other commands through registry
@@ -131,10 +132,7 @@ async fn main() -> Result<()> {
 
     let exe_path = env::current_exe()?.to_string_lossy().to_string();
 
-    // Start background daemons
-    let _ = std::process::Command::new(&exe_path)
-        .arg("--watcher")
-        .spawn();
+    // Start background daemon
     let _ = std::process::Command::new(&exe_path)
         .arg("--daemon")
         .spawn();
