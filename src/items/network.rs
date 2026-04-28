@@ -3,7 +3,6 @@ use crate::api::event::BarEvent;
 use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign, ToggleState};
 use crate::api::types::{Font, FontStyle};
 use crate::daemon::DaemonCmd;
-use crate::items::Item;
 use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::{Result, anyhow};
 use local_ip_address::local_ip;
@@ -28,20 +27,6 @@ struct WifiNetwork {
     security: Option<String>,
     #[serde(rename = "spairport_network_signal_strength")]
     signal: Option<i32>,
-}
-
-impl Item for Network {
-    fn fetch() -> Result<Self> {
-        Network::fetch()
-    }
-
-    fn update_items(&self) -> Result<()> {
-        Network::update_items(self)
-    }
-
-    fn setup(exe_path: &str) -> Result<()> {
-        Network::setup(exe_path)
-    }
 }
 
 impl Network {

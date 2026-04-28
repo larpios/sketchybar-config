@@ -1,23 +1,8 @@
-use crate::items::Item;
 use anyhow::Result;
 
 #[derive(Debug, Clone)]
 pub struct Weather {
     pub temp: String,
-}
-
-impl Item for Weather {
-    fn fetch() -> Result<Self> {
-        Weather::fetch()
-    }
-
-    fn update_items(&self) -> Result<()> {
-        Weather::update_items(self)
-    }
-
-    fn setup(exe_path: &str) -> Result<()> {
-        Weather::setup(exe_path)
-    }
 }
 
 impl Weather {

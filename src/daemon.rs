@@ -18,6 +18,13 @@ pub enum DaemonCmd {
         device: String,
         security: String,
     },
+    UpdateBluetoothPopup {
+        scan: bool,
+    },
+    ToggleBluetoothDevice {
+        address: String,
+    },
+    Shutdown,
 }
 
 pub async fn run() -> Result<()> {
@@ -54,6 +61,7 @@ async fn handle(stream: UnixStream) -> Result<()> {
 }
 
 async fn dispatch(cmd: DaemonCmd) -> Result<()> {
+    use crate::items::bluetooth;
     use crate::items::network::Network;
     match cmd {
         DaemonCmd::UpdateNetworkPopup => Network::update_popup().await,
@@ -69,6 +77,15 @@ async fn dispatch(cmd: DaemonCmd) -> Result<()> {
             Network::update_command()?;
             Network::update_popup().await
         }
+        DaemonCmd::UpdateBluetoothPopup { scan } => bluetooth::update_popup(scan).await,
+        DaemonCmd::ToggleBluetoothDevice { address } => {
+            bluetooth::toggle_device(&address).await?;
+            bluetooth::update_popup(false).await
+        }
+        DaemonCmd::Shutdown => {
+            println!("[daemon] shutdown requested");
+            std::process::exit(0);
+        }
     }
 }
 
@@ -77,4 +94,8 @@ pub async fn send(json: &str) -> Result<()> {
     stream.write_all(format!("{json}\n").as_bytes()).await?;
     stream.flush().await?;
     Ok(())
+}
+
+pub async fn stop() -> Result<()> {
+    send(r#"{"cmd": "shutdown"}"#).await
 }

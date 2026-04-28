@@ -1,6 +1,7 @@
 use crate::api;
 use crate::api::item::{Argb, BarItem, ComponentPosition, ItemBuilder, PopupAlign, ToggleState};
 use crate::api::types::{Font, FontStyle};
+use crate::daemon::DaemonCmd;
 use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::{Result, anyhow};
 use btleplug::api::{Central, Manager as _, Peripheral, ScanFilter};
@@ -313,9 +314,16 @@ async fn render_single_device(device: BluetoothDevice, is_paired: bool) -> Resul
         CATPUCCIN_MOCHA.overlay2
     };
 
+    let toggle_cmd = daemon_send_script(
+        &exe_path,
+        &DaemonCmd::ToggleBluetoothDevice {
+            address: device.address.clone(),
+        },
+    );
+
     let click_script = format!(
-        "sketchybar --set $NAME background.highlight=on; sleep 0.1; sketchybar --set $NAME background.highlight=off; {} --toggle-bluetooth-device {}",
-        exe_path, device.address
+        "sketchybar --set $NAME background.highlight=on; sleep 0.1; sketchybar --set $NAME background.highlight=off; {}",
+        toggle_cmd
     );
 
     let item = BarItem::new(&name)
@@ -361,18 +369,26 @@ if device.isConnected() {{ device.closeConnection() }} else {{ device.openConnec
 
     // Wait a bit for the connection to actually settle before refreshing
     tokio::time::sleep(Duration::from_millis(500)).await;
-    update_popup(false).await?;
     Ok(())
 }
 
+/// Build a shell command that sends a daemon command via `--send`.
+fn daemon_send_script(exe_path: &str, cmd: &DaemonCmd) -> String {
+    let json = serde_json::to_string(cmd).unwrap_or_default();
+    // Escape single quotes for shell: ' → '\''
+    let safe_json = json.replace('\'', "'\\''");
+    format!("{} --send '{}'", exe_path, safe_json)
+}
+
 pub async fn setup(exe_path: &str) -> Result<()> {
+    let scan_cmd = daemon_send_script(exe_path, &DaemonCmd::UpdateBluetoothPopup { scan: true });
     let item = BarItem::new("bluetooth")
         .position(ComponentPosition::Right)
         .update_freq(5)
         .script(&format!("{} --update-bluetooth", exe_path))
         .click_script(&format!(
-            "sketchybar --set bluetooth popup.drawing=toggle; {} --scan-bluetooth",
-            exe_path
+            "sketchybar --set bluetooth popup.drawing=toggle; {}",
+            scan_cmd
         ))
         .icon("")
         .icon_color(CATPUCCIN_MOCHA.blue)

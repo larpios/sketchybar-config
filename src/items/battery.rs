@@ -1,4 +1,3 @@
-use crate::items::Item;
 use anyhow::Result;
 use std::process::Command;
 
@@ -10,20 +9,6 @@ pub struct Battery {
     pub cycle_count: Option<u32>,
     pub health: Option<u8>,
     pub status: String,
-}
-
-impl Item for Battery {
-    fn fetch() -> Result<Self> {
-        Battery::fetch()
-    }
-
-    fn update_items(&self) -> Result<()> {
-        Battery::update_items(self)
-    }
-
-    fn setup(exe_path: &str) -> Result<()> {
-        Battery::setup(exe_path)
-    }
 }
 
 impl Battery {

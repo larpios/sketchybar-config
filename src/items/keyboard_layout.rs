@@ -1,24 +1,9 @@
-use crate::items::Item;
 use anyhow::Result;
 use std::process::Command;
 
 #[derive(Debug, Clone)]
 pub struct KeyboardLayout {
     pub name: String,
-}
-
-impl Item for KeyboardLayout {
-    fn fetch() -> Result<Self> {
-        KeyboardLayout::fetch()
-    }
-
-    fn update_items(&self) -> Result<()> {
-        KeyboardLayout::update_items(self)
-    }
-
-    fn setup(exe_path: &str) -> Result<()> {
-        KeyboardLayout::setup(exe_path)
-    }
 }
 
 // For bundle IDs like "com.apple.inputmethod.Korean.2SetKorean"

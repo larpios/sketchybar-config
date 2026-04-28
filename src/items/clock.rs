@@ -1,4 +1,3 @@
-use crate::items::Item;
 use anyhow::Result;
 use chrono::{Local, Utc};
 
@@ -10,20 +9,6 @@ pub struct Clock {
     pub time: String,
     pub full_date: String,
     pub utc_time: String,
-}
-
-impl Item for Clock {
-    fn fetch() -> Result<Self> {
-        Clock::fetch()
-    }
-
-    fn update_items(&self) -> Result<()> {
-        Clock::update_items(self)
-    }
-
-    fn setup(exe_path: &str) -> Result<()> {
-        Clock::setup(exe_path)
-    }
 }
 
 impl Clock {

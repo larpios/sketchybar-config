@@ -1,4 +1,3 @@
-use crate::items::Item;
 use anyhow::Result;
 use lazy_static::lazy_static;
 use std::{sync::Mutex, thread, time::Duration};
@@ -13,26 +12,12 @@ pub struct Cpu {
     pub load: u8,
 }
 
-impl Item for Cpu {
-    fn fetch() -> Result<Self> {
-        Cpu::fetch()
-    }
-
-    fn update_items(&self) -> Result<()> {
-        Cpu::update_items(self)
-    }
-
-    fn setup(exe_path: &str) -> Result<()> {
-        Cpu::setup(exe_path)
-    }
-}
-
 impl Cpu {
-    pub fn update_command() -> Result<()> {
+    pub(super) fn update_command() -> Result<()> {
         let data = Self::fetch()?;
         Self::update_items(&data)
     }
-    pub fn fetch() -> anyhow::Result<Self> {
+    pub(super) fn fetch() -> anyhow::Result<Self> {
         let mut sys = SYS.lock().unwrap();
 
         sys.refresh_cpu_specifics(CpuRefreshKind::everything());
@@ -46,7 +31,7 @@ impl Cpu {
         Ok(Self { load })
     }
 
-    pub fn setup(exe_path: &str) -> anyhow::Result<()> {
+    pub(super) fn setup(exe_path: &str) -> anyhow::Result<()> {
         use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, ToggleState};
         use crate::themes::CATPUCCIN_MOCHA;
 
@@ -68,7 +53,7 @@ impl Cpu {
         Ok(())
     }
 
-    pub fn update_items(data: &Self) -> anyhow::Result<()> {
+    pub(super) fn update_items(data: &Self) -> anyhow::Result<()> {
         use crate::api::item::{BarItem, ItemBuilder};
 
         BarItem::new("cpu")

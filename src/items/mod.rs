@@ -12,26 +12,12 @@ pub mod workspaces;
 
 use anyhow::Result;
 
-/// Unified trait for all bar items
-pub trait Item {
-    /// Fetch fresh data for this item
-    fn fetch() -> Result<Self>
-    where
-        Self: Sized;
-
-    /// Update the UI elements with current data
-    fn update_items(&self) -> Result<()>;
-
-    /// Initial setup of UI elements
-    fn setup(exe_path: &str) -> Result<()>;
-}
-
 /// Registry for command-based item updates
 pub struct ItemRegistry;
 
 impl ItemRegistry {
     /// Execute an item command if registered. Returns Some if handled.
-    pub async fn execute(cmd: &str, args: &[String]) -> Result<Option<()>> {
+    pub async fn execute(cmd: &str, _args: &[String]) -> Result<Option<()>> {
         match cmd {
             "--update-clock" => Ok(Some(clock::Clock::update_command()?)),
             "--update-weather" => Ok(Some(weather::Weather::update_command()?)),
@@ -45,15 +31,6 @@ impl ItemRegistry {
             "--update-media" => Ok(Some(media::update_command()?)),
             "--update-workspaces" => Ok(Some(workspaces::update_command()?)),
             "--update-bluetooth" => Ok(Some(bluetooth::update().await?)),
-            "--update-bluetooth-popup" => Ok(Some(bluetooth::update_popup(false).await?)),
-            "--scan-bluetooth" => Ok(Some(bluetooth::update_popup(true).await?)),
-            "--toggle-bluetooth-device" => {
-                if !args.is_empty() {
-                    bluetooth::toggle_device(&args[0]).await?;
-                    bluetooth::update_popup(false).await?;
-                }
-                Ok(Some(()))
-            }
             _ => Ok(None),
         }
     }
