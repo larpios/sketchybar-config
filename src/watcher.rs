@@ -43,8 +43,10 @@ unsafe extern "C" fn notification_callback(
     _object: *mut c_void,
     _user_info: *mut c_void,
 ) {
-    if let Some(bus) = &*GLOBAL_BUS.lock().unwrap() {
-        let _ = bus.send(Event::UpdateMedia);
+    if let Ok(guard) = GLOBAL_BUS.lock() {
+        if let Some(bus) = &*guard {
+            let _ = bus.send(Event::UpdateMedia);
+        }
     }
 }
 
@@ -56,10 +58,12 @@ unsafe extern "C" fn keyboard_layout_callback(
     _user_info: *mut c_void,
 ) {
     let source_id = crate::keyboard_ffi::get_current_source_id().unwrap_or_default();
-    if let Some(bus) = &*GLOBAL_BUS.lock().unwrap() {
-        let _ = bus.send(Event::UpdateKeyboardLayout {
-            source_id: Some(source_id),
-        });
+    if let Ok(guard) = GLOBAL_BUS.lock() {
+        if let Some(bus) = &*guard {
+            let _ = bus.send(Event::UpdateKeyboardLayout {
+                source_id: Some(source_id),
+            });
+        }
     }
 }
 
@@ -67,7 +71,9 @@ pub fn watch(bus: EventBus) -> anyhow::Result<()> {
     println!("Starting system events watcher...");
 
     {
-        let mut global_bus = GLOBAL_BUS.lock().unwrap();
+        let mut global_bus = GLOBAL_BUS
+            .lock()
+            .map_err(|_| anyhow::anyhow!("GLOBAL_BUS mutex poisoned"))?;
         *global_bus = Some(bus.clone());
     }
 

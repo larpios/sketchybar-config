@@ -23,7 +23,9 @@ impl Cpu {
         Self::update_items(&data)
     }
     pub(super) fn fetch() -> anyhow::Result<CpuData> {
-        let mut sys = SYS.lock().unwrap();
+        let mut sys = SYS
+            .lock()
+            .map_err(|_| anyhow::anyhow!("SYS mutex poisoned"))?;
 
         sys.refresh_cpu_specifics(CpuRefreshKind::everything());
 
