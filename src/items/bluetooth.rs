@@ -359,19 +359,20 @@ impl Bluetooth {
             .label("Processing...")
             .set()?;
 
-        let swift_script = format!(
-            r#"
+        let swift_script = r#"
 import IOBluetooth
-let address = "{}"
-guard let device = IOBluetoothDevice(addressString: address) else {{
-    exit(1) 
-}}
-if device.isConnected() {{ device.closeConnection() }} else {{ device.openConnection() }}
-"#,
-            address
-        );
+let address = CommandLine.arguments[1]
+guard let device = IOBluetoothDevice(addressString: address) else {
+    exit(1)
+}
+if device.isConnected() { device.closeConnection() } else { device.openConnection() }
+"#;
 
-        let _ = Command::new("swift").arg("-e").arg(swift_script).status();
+        let _ = Command::new("swift")
+            .arg("-e")
+            .arg(swift_script)
+            .arg(address)
+            .status();
 
         // Wait a bit for the connection to actually settle before refreshing
         tokio::time::sleep(Duration::from_millis(500)).await;

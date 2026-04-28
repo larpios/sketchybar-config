@@ -237,12 +237,12 @@ impl Network {
         let is_protected = security != "Open" && !security.is_empty();
 
         let password = if is_protected {
-            let script = format!(
-                "display dialog \"Enter password for Wi-Fi \\\"{}\\\":\" default answer \"\" with hidden answer",
-                ssid
-            );
+            let script = "on run argv
+                display dialog \"Enter password for Wi-Fi \" & (item 1 of argv) & \":\" default answer \"\" with hidden answer
+                return text returned of result
+            end run";
             let output = Command::new("osascript")
-                .args(["-e", &script, "-e", "text returned of result"])
+                .args(["-e", script, ssid])
                 .output()?;
 
             if !output.status.success() {

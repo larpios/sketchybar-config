@@ -29,19 +29,33 @@ impl Volume {
         if name == "volume.slider" && !percentage.is_empty() {
             if let Ok(vol) = percentage.parse::<u8>() {
                 let _ = Command::new("osascript")
-                    .args(["-e", &format!("set volume output volume {}", vol)])
+                    .args([
+                        "-e",
+                        "on run argv",
+                        "-e",
+                        "set volume output volume (item 1 of argv)",
+                        "-e",
+                        "end run",
+                        &vol.to_string(),
+                    ])
                     .status();
             }
         } else {
             match sender.as_str() {
                 "mouse.scrolled" => {
                     if let Ok(delta) = scroll_delta.parse::<f32>() {
+                        let vol_delta = -delta * VOLUME_SCROLL_SENSITIVITY;
                         let _ = Command::new("osascript")
-                        .args([
-                            "-e",
-                            format!("set volume output volume ((output volume of (get volume settings)) + {})", -delta * VOLUME_SCROLL_SENSITIVITY).as_str(),
-                        ])
-                        .status();
+                            .args([
+                                "-e",
+                                "on run argv",
+                                "-e",
+                                "set volume output volume ((output volume of (get volume settings)) + (item 1 of argv))",
+                                "-e",
+                                "end run",
+                                &vol_delta.to_string(),
+                            ])
+                            .status();
                     }
                 }
                 "mouse.clicked" if name == "volume" => {
@@ -129,7 +143,7 @@ impl SketchybarItem for Volume {
                     .knob("󰝥")
                     .knob_color(CATPUCCIN_MOCHA.blue)
                     .knob_font(Font::default())
-                    .script(r#"osascript -e "set volume output volume $PERCENTAGE""#),
+                    .script(r#"osascript -e 'on run argv' -e 'set volume output volume (item 1 of argv)' -e 'end run' "$PERCENTAGE""#),
             );
 
         item.add()?;
