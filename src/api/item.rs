@@ -34,6 +34,10 @@ impl BarItem {
         crate::api::set_item(&self.name, self)
     }
 
+    pub fn animate_set(&self, curve: &str, duration: u32) -> Result<()> {
+        crate::api::animate_set_item(curve, duration, &self.name, self)
+    }
+
     pub fn subscribe<I, E>(&self, events: I) -> Result<()>
     where
         I: IntoIterator<Item = E>,
@@ -97,6 +101,10 @@ impl Slider {
 
     pub fn set(&self) -> Result<()> {
         crate::api::set_item(&self.name, self)
+    }
+
+    pub fn animate_set(&self, curve: &str, duration: u32) -> Result<()> {
+        crate::api::animate_set_item(curve, duration, &self.name, self)
     }
 
     pub fn slider_width(mut self, width: u32) -> Self {

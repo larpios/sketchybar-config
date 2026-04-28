@@ -215,7 +215,7 @@ impl SketchybarItem for Battery {
             .drawing(ToggleState::On)
             .update_freq(60)
             .script(&format!("{} --update-battery", exe_path))
-            .click_script("sketchybar --set battery popup.drawing=toggle")
+            .click_script("sketchybar --animate sin 15 --set battery popup.drawing=toggle")
             .background_color(CATPUCCIN_MOCHA.surface0)
             .background_drawing(ToggleState::On)
             .popup_align(PopupAlign::Center)

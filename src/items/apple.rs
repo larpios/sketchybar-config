@@ -22,7 +22,7 @@ impl SketchybarItem for Apple {
             .background_drawing(ToggleState::Off)
             .label_drawing(ToggleState::Off)
             .padding_right(15)
-            .click_script("sketchybar -m --set $NAME popup.drawing=toggle")
+            .click_script("sketchybar -m --animate sin 15 --set $NAME popup.drawing=toggle")
             .popup_drawing(ToggleState::Off)
             .popup_align(PopupAlign::Left)
             .popup_blur_radius(30)
@@ -72,9 +72,9 @@ fn menu_item(name: &str, label: &str, command: &str) -> BarItem {
     let script = format!(
         // sh
         r#"if [ "$SENDER" = "mouse.entered" ]; then 
-            sketchybar --set $NAME background.drawing={}
+            sketchybar --animate sin 10 --set $NAME background.drawing={}
         elif [ "$SENDER" = "mouse.exited" ]; then 
-            sketchybar --set $NAME background.drawing={}
+            sketchybar --animate sin 10 --set $NAME background.drawing={}
         fi"#,
         "on", "off"
     );
@@ -96,7 +96,7 @@ fn menu_item(name: &str, label: &str, command: &str) -> BarItem {
         .background_drawing(ToggleState::Off)
         .script(&script)
         .click_script(&format!(
-            "sketchybar -m --set apple.logo popup.drawing=off && {}",
+            "sketchybar -m --animate sin 15 --set apple.logo popup.drawing=off && {}",
             command
         ))
 }
