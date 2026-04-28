@@ -27,7 +27,8 @@ impl Volume {
         let scroll_delta = env::var("SCROLL_DELTA").unwrap_or_default();
 
         if name == "volume.slider" && !percentage.is_empty() {
-            if let Ok(vol) = percentage.parse::<u8>() {
+            if let Ok(vol) = percentage.parse::<f32>() {
+                let vol_int = vol as u8;
                 let _ = Command::new("osascript")
                     .args([
                         "-e",
@@ -36,7 +37,7 @@ impl Volume {
                         "set volume output volume (item 1 of argv)",
                         "-e",
                         "end run",
-                        &vol.to_string(),
+                        &vol_int.to_string(),
                     ])
                     .status();
             }
@@ -79,7 +80,7 @@ impl Volume {
             String::from_utf8_lossy(&output.stdout).trim().to_string()
         };
 
-        let vol: u8 = vol_str.parse().unwrap_or(50);
+        let vol: u8 = vol_str.parse::<f32>().map(|f| f as u8).unwrap_or(50);
 
         // Check if muted
         let muted_output = Command::new("osascript")
@@ -115,6 +116,15 @@ impl Volume {
 #[async_trait]
 impl SketchybarItem for Volume {
     async fn setup(&self, exe_path: &str) -> Result<()> {
+        let current_vol_output = Command::new("osascript")
+            .args(["-e", "output volume of (get volume settings)"])
+            .output()?;
+        let current_vol: u32 = String::from_utf8_lossy(&current_vol_output.stdout)
+            .trim()
+            .parse::<f32>()
+            .map(|f| f as u32)
+            .unwrap_or(50);
+
         let item = BarItem::new("volume")
             .position(ComponentPosition::Right)
             .script(&format!("{} --update-volume", exe_path))
@@ -128,7 +138,7 @@ impl SketchybarItem for Volume {
             .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
             .add_slider(
                 Slider::new("volume.slider")
-                    .percentage(50)
+                    .percentage(current_vol)
                     .background_drawing(ToggleState::Off)
                     .slider_width(100)
                     .slider_background_height(5)
@@ -141,7 +151,7 @@ impl SketchybarItem for Volume {
                     .knob("󰝥")
                     .knob_color(CATPUCCIN_MOCHA.blue)
                     .knob_font(Font::default())
-                    .script(r#"osascript -e 'on run argv' -e 'set volume output volume (item 1 of argv)' -e 'end run' "$PERCENTAGE""#),
+                    .script(&format!("{} --update-volume", exe_path)),
             );
 
         item.add()?;

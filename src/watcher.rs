@@ -43,10 +43,10 @@ unsafe extern "C" fn notification_callback(
     _object: *mut c_void,
     _user_info: *mut c_void,
 ) {
-    if let Ok(guard) = GLOBAL_BUS.lock() {
-        if let Some(bus) = &*guard {
-            let _ = bus.send(Event::UpdateMedia);
-        }
+    if let Ok(guard) = GLOBAL_BUS.lock()
+        && let Some(bus) = &*guard
+    {
+        let _ = bus.send(Event::UpdateMedia);
     }
 }
 
@@ -58,12 +58,12 @@ unsafe extern "C" fn keyboard_layout_callback(
     _user_info: *mut c_void,
 ) {
     let source_id = crate::keyboard_ffi::get_current_source_id().unwrap_or_default();
-    if let Ok(guard) = GLOBAL_BUS.lock() {
-        if let Some(bus) = &*guard {
-            let _ = bus.send(Event::UpdateKeyboardLayout {
-                source_id: Some(source_id),
-            });
-        }
+    if let Ok(guard) = GLOBAL_BUS.lock()
+        && let Some(bus) = &*guard
+    {
+        let _ = bus.send(Event::UpdateKeyboardLayout {
+            source_id: Some(source_id),
+        });
     }
 }
 
