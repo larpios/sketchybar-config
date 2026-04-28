@@ -66,9 +66,12 @@ impl SketchybarItem for Weather {
 
         item.add()?;
 
-        // Initial update
-        let data = Self::fetch()?;
-        Self::update_items(&data)?;
+        // Initial update in background so it doesn't block setup
+        tokio::task::spawn_blocking(|| {
+            if let Ok(data) = Self::fetch() {
+                let _ = Self::update_items(&data);
+            }
+        });
 
         Ok(())
     }
