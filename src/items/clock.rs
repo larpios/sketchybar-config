@@ -68,7 +68,7 @@ impl SketchybarItem for Clock {
             .popup_background_corner_radius(8)
             .popup_background_border_width(2)
             .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
-            .click_script("sketchybar --set clock popup.drawing=toggle")
+            .click_script("sketchybar --animate sin 15 --set clock popup.drawing=toggle")
             .add_item(BarItem::new("clock.date").icon("Date:").label("Loading..."))
             .add_item(BarItem::new("clock.utc").icon("UTC:").label("Loading..."));
 
