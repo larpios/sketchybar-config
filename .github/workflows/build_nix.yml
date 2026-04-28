@@ -1,13 +1,13 @@
-name: "Build legacy Nix package on Ubuntu"
+name: "Build legacy Nix package on macOS"
 
 on:
   push:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: cachix/install-nix-action@v26
+      - uses: DeterminateSystems/nix-installer-action@main
       - name: Building package
         run: nix build 

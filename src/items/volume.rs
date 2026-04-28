@@ -115,8 +115,6 @@ impl Volume {
 #[async_trait]
 impl SketchybarItem for Volume {
     async fn setup(&self, exe_path: &str) -> Result<()> {
-        api::add_event("volume_change")?;
-
         let item = BarItem::new("volume")
             .position(ComponentPosition::Right)
             .script(&format!("{} --update-volume", exe_path))
@@ -155,11 +153,6 @@ impl SketchybarItem for Volume {
 
         // Slider also needs mouse clicked subscription
         api::subscribe("volume.slider", [BarEvent::MouseClicked])?;
-
-        // Initial trigger
-        let _ = Command::new("sketchybar")
-            .args(["--trigger", "volume_change"])
-            .status();
 
         Ok(())
     }
