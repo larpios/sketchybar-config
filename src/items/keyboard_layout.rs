@@ -1,8 +1,11 @@
+use crate::events::Event;
+use crate::items::SketchybarItem;
 use anyhow::Result;
+use async_trait::async_trait;
 use std::process::Command;
 
 #[derive(Debug, Clone)]
-pub struct KeyboardLayout {
+pub struct KeyboardLayoutData {
     pub name: String,
 }
 
@@ -84,9 +87,11 @@ fn fetch_via_plist() -> String {
         .unwrap_or_else(|| "??".to_string())
 }
 
+pub struct KeyboardLayout;
+
 impl KeyboardLayout {
-    pub fn fetch() -> Result<Self> {
-        Ok(Self {
+    pub fn fetch() -> Result<KeyboardLayoutData> {
+        Ok(KeyboardLayoutData {
             name: fetch_via_plist(),
         })
     }
@@ -98,18 +103,21 @@ impl KeyboardLayout {
             Ok(info) if !info.is_empty() => source_id_to_code(&info),
             _ => fetch_via_plist(),
         };
-        Self::update_items(&KeyboardLayout { name })
+        Self::update_items(&KeyboardLayoutData { name })
     }
 
-    pub fn update_items(data: &Self) -> Result<()> {
+    pub fn update_items(data: &KeyboardLayoutData) -> Result<()> {
         use crate::api::item::{BarItem, ItemBuilder};
 
         BarItem::new("keyboard_layout").label(&data.name).set()?;
 
         Ok(())
     }
+}
 
-    pub fn setup(exe_path: &str) -> Result<()> {
+#[async_trait]
+impl SketchybarItem for KeyboardLayout {
+    async fn setup(&self, exe_path: &str) -> Result<()> {
         use crate::api::event::BarEvent;
         use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, ToggleState};
         use crate::themes::CATPUCCIN_MOCHA;
@@ -130,5 +138,17 @@ impl KeyboardLayout {
         Self::update_items(&data)?;
 
         Ok(())
+    }
+
+    async fn spawn_background_task(&self, mut bus: tokio::sync::broadcast::Receiver<Event>) {
+        tokio::spawn(async move {
+            while let Ok(event) = bus.recv().await {
+                if matches!(event, Event::UpdateKeyboardLayout)
+                    && let Err(e) = Self::update_command()
+                {
+                    eprintln!("[keyboard_layout] update error: {e}");
+                }
+            }
+        });
     }
 }

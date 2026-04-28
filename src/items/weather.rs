@@ -1,16 +1,21 @@
+use crate::events::Event;
+use crate::items::SketchybarItem;
 use anyhow::Result;
+use async_trait::async_trait;
 
 #[derive(Debug, Clone)]
-pub struct Weather {
+pub struct WeatherData {
     pub temp: String,
 }
+
+pub struct Weather;
 
 impl Weather {
     pub fn update_command() -> Result<()> {
         let data = Self::fetch()?;
         Self::update_items(&data)
     }
-    pub fn fetch() -> anyhow::Result<Self> {
+    pub fn fetch() -> anyhow::Result<WeatherData> {
         let temp = match ureq::get("https://wttr.in/?format=%t").call() {
             Ok(response) => {
                 let text = response
@@ -31,10 +36,21 @@ impl Weather {
             _ => "N/A".to_string(),
         };
 
-        Ok(Self { temp })
+        Ok(WeatherData { temp })
     }
 
-    pub fn setup(exe_path: &str) -> anyhow::Result<()> {
+    pub fn update_items(data: &WeatherData) -> anyhow::Result<()> {
+        use crate::api::item::{BarItem, ItemBuilder};
+
+        BarItem::new("weather").label(&data.temp).set()?;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl SketchybarItem for Weather {
+    async fn setup(&self, exe_path: &str) -> Result<()> {
         use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, ToggleState};
         use crate::themes::CATPUCCIN_MOCHA;
 
@@ -57,11 +73,15 @@ impl Weather {
         Ok(())
     }
 
-    pub fn update_items(data: &Self) -> anyhow::Result<()> {
-        use crate::api::item::{BarItem, ItemBuilder};
-
-        BarItem::new("weather").label(&data.temp).set()?;
-
-        Ok(())
+    async fn spawn_background_task(&self, mut bus: tokio::sync::broadcast::Receiver<Event>) {
+        tokio::spawn(async move {
+            while let Ok(event) = bus.recv().await {
+                if matches!(event, Event::UpdateWeather)
+                    && let Err(e) = Self::update_command()
+                {
+                    eprintln!("[weather] update error: {e}");
+                }
+            }
+        });
     }
 }

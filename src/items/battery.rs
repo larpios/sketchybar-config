@@ -1,8 +1,11 @@
+use crate::events::Event;
+use crate::items::SketchybarItem;
 use anyhow::Result;
+use async_trait::async_trait;
 use std::process::Command;
 
 #[derive(Debug, Clone)]
-pub struct Battery {
+pub struct BatteryData {
     pub percentage: Option<u8>,
     pub icon: String,
     pub wattage: Option<f32>,
@@ -11,12 +14,14 @@ pub struct Battery {
     pub status: String,
 }
 
+pub struct Battery;
+
 impl Battery {
     pub fn update_command() -> Result<()> {
         let data = Self::fetch()?;
         Self::update_items(&data)
     }
-    pub fn fetch() -> anyhow::Result<Self> {
+    pub fn fetch() -> anyhow::Result<BatteryData> {
         let sender = std::env::var("SENDER").unwrap_or_default();
         let info = std::env::var("INFO").unwrap_or_default();
 
@@ -154,7 +159,7 @@ impl Battery {
             None => "".to_string(),
         };
 
-        Ok(Self {
+        Ok(BatteryData {
             percentage,
             icon,
             wattage,
@@ -164,7 +169,41 @@ impl Battery {
         })
     }
 
-    pub fn setup(exe_path: &str) -> anyhow::Result<()> {
+    pub fn update_items(data: &BatteryData) -> anyhow::Result<()> {
+        use crate::api::item::{BarItem, ItemBuilder};
+        use crate::api::types::ToggleState;
+
+        let label = if let Some(percentage) = data.percentage {
+            format!("{}%", percentage)
+        } else {
+            "AC".to_string()
+        };
+
+        BarItem::new("battery")
+            .icon(&data.icon)
+            .label(&label)
+            .drawing(ToggleState::On)
+            .set()?;
+
+        BarItem::new("battery.status").label(&data.status).set()?;
+        BarItem::new("battery.wattage")
+            .label(&format!("{:.1}W", data.wattage.unwrap_or(0.0)))
+            .set()?;
+        BarItem::new("battery.health")
+            .label(&format!(
+                "{}% ({} cycles)",
+                data.health.unwrap_or(100),
+                data.cycle_count.unwrap_or(0)
+            ))
+            .set()?;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl SketchybarItem for Battery {
+    async fn setup(&self, exe_path: &str) -> Result<()> {
         let battery_data = Self::fetch()?;
 
         use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign};
@@ -199,34 +238,15 @@ impl Battery {
         Ok(())
     }
 
-    pub fn update_items(data: &Self) -> anyhow::Result<()> {
-        use crate::api::item::{BarItem, ItemBuilder};
-        use crate::api::types::ToggleState;
-
-        let label = if let Some(percentage) = data.percentage {
-            format!("{}%", percentage)
-        } else {
-            "AC".to_string()
-        };
-
-        BarItem::new("battery")
-            .icon(&data.icon)
-            .label(&label)
-            .drawing(ToggleState::On)
-            .set()?;
-
-        BarItem::new("battery.status").label(&data.status).set()?;
-        BarItem::new("battery.wattage")
-            .label(&format!("{:.1}W", data.wattage.unwrap_or(0.0)))
-            .set()?;
-        BarItem::new("battery.health")
-            .label(&format!(
-                "{}% ({} cycles)",
-                data.health.unwrap_or(100),
-                data.cycle_count.unwrap_or(0)
-            ))
-            .set()?;
-
-        Ok(())
+    async fn spawn_background_task(&self, mut bus: tokio::sync::broadcast::Receiver<Event>) {
+        tokio::spawn(async move {
+            while let Ok(event) = bus.recv().await {
+                if matches!(event, Event::UpdateBattery)
+                    && let Err(e) = Self::update_command()
+                {
+                    eprintln!("[battery] update error: {e}");
+                }
+            }
+        });
     }
 }

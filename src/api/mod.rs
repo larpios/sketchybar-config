@@ -1,7 +1,10 @@
 pub mod bar;
+pub mod builder;
 pub mod components;
 pub mod event;
+pub mod exec;
 pub mod item;
+pub mod props;
 pub mod types;
 
 use std::process::Command;
@@ -10,7 +13,8 @@ use anyhow::{Ok, Result};
 
 use crate::api::bar::Bar;
 use crate::api::event::BarEvent;
-use crate::api::item::{BarItem, ChildComponent, ComponentPosition};
+use crate::api::item::{BarItem, ChildComponent};
+use crate::api::props::ComponentPosition;
 use crate::api::types::ToSketchybarArgs;
 
 macro_rules! sb {

@@ -1,4 +1,7 @@
+use crate::events::Event;
+use crate::items::SketchybarItem;
 use anyhow::Result;
+use async_trait::async_trait;
 use lazy_static::lazy_static;
 use std::{sync::Mutex, thread, time::Duration};
 use sysinfo::{CpuRefreshKind, System};
@@ -8,16 +11,18 @@ lazy_static! {
 }
 
 #[derive(Debug, Clone)]
-pub struct Cpu {
+pub struct CpuData {
     pub load: u8,
 }
+
+pub struct Cpu;
 
 impl Cpu {
     pub(super) fn update_command() -> Result<()> {
         let data = Self::fetch()?;
         Self::update_items(&data)
     }
-    pub(super) fn fetch() -> anyhow::Result<Self> {
+    pub(super) fn fetch() -> anyhow::Result<CpuData> {
         let mut sys = SYS.lock().unwrap();
 
         sys.refresh_cpu_specifics(CpuRefreshKind::everything());
@@ -28,10 +33,23 @@ impl Cpu {
 
         let load = (sys.global_cpu_usage().round() as u8).clamp(0, 100);
 
-        Ok(Self { load })
+        Ok(CpuData { load })
     }
 
-    pub(super) fn setup(exe_path: &str) -> anyhow::Result<()> {
+    pub(super) fn update_items(data: &CpuData) -> anyhow::Result<()> {
+        use crate::api::item::{BarItem, ItemBuilder};
+
+        BarItem::new("cpu")
+            .label(&format!("{}%", data.load))
+            .set()?;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl SketchybarItem for Cpu {
+    async fn setup(&self, exe_path: &str) -> Result<()> {
         use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, ToggleState};
         use crate::themes::CATPUCCIN_MOCHA;
 
@@ -53,13 +71,15 @@ impl Cpu {
         Ok(())
     }
 
-    pub(super) fn update_items(data: &Self) -> anyhow::Result<()> {
-        use crate::api::item::{BarItem, ItemBuilder};
-
-        BarItem::new("cpu")
-            .label(&format!("{}%", data.load))
-            .set()?;
-
-        Ok(())
+    async fn spawn_background_task(&self, mut bus: tokio::sync::broadcast::Receiver<Event>) {
+        tokio::spawn(async move {
+            while let Ok(event) = bus.recv().await {
+                if matches!(event, Event::UpdateCpu)
+                    && let Err(e) = Self::update_command()
+                {
+                    eprintln!("[cpu] update error: {e}");
+                }
+            }
+        });
     }
 }

@@ -3,14 +3,17 @@ use crate::api::event::BarEvent;
 use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign, ToggleState};
 use crate::api::types::{Font, FontStyle};
 use crate::daemon::DaemonCmd;
+use crate::events::Event;
+use crate::items::SketchybarItem;
 use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::{Result, anyhow};
+use async_trait::async_trait;
 use local_ip_address::local_ip;
 use serde::Deserialize;
 use std::process::Command;
 
 #[derive(Debug, Clone)]
-pub struct Network {
+pub struct NetworkData {
     pub is_connected: bool,
     pub is_wifi: bool,
     pub is_wifi_on: bool,
@@ -29,13 +32,15 @@ struct WifiNetwork {
     signal: Option<i32>,
 }
 
+pub struct Network;
+
 impl Network {
     pub fn update_command() -> Result<()> {
         let data = Self::fetch()?;
         Self::update_items(&data)
     }
 
-    pub fn fetch() -> Result<Self> {
+    pub fn fetch() -> Result<NetworkData> {
         let scutil_output = Command::new("scutil").arg("--nwi").output()?;
         let stdout = String::from_utf8_lossy(&scutil_output.stdout);
         let mut device = String::new();
@@ -63,7 +68,7 @@ impl Network {
         }
 
         if device.is_empty() {
-            return Ok(Self {
+            return Ok(NetworkData {
                 is_connected: false,
                 is_wifi: false,
                 is_wifi_on: false,
@@ -125,7 +130,7 @@ impl Network {
             is_wifi_on = String::from_utf8_lossy(&power_output.stdout).contains("On");
         }
 
-        Ok(Self {
+        Ok(NetworkData {
             is_connected: !ip.is_empty() && ip != "127.0.0.1",
             is_wifi,
             is_wifi_on,
@@ -135,36 +140,7 @@ impl Network {
         })
     }
 
-    pub fn setup(exe_path: &str) -> Result<()> {
-        let popup_cmd = daemon_send_script(exe_path, &DaemonCmd::UpdateNetworkPopup);
-
-        let item = BarItem::new("network")
-            .position(ComponentPosition::Right)
-            .update_freq(10)
-            .script(&format!("{} --update-network", exe_path))
-            .click_script(&format!(
-                "sketchybar --set network popup.drawing=toggle; {}",
-                popup_cmd
-            ))
-            .label_drawing(ToggleState::Off)
-            .background_color(CATPUCCIN_MOCHA.surface0)
-            .background_drawing(ToggleState::On)
-            .popup_align(PopupAlign::Right)
-            .popup_background_color(CATPUCCIN_MOCHA.base)
-            .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
-            .popup_background_border_width(2)
-            .popup_background_corner_radius(12);
-
-        item.add()?;
-        item.subscribe([BarEvent::WifiChange])?;
-
-        let data = Self::fetch()?;
-        Self::update_items(&data)?;
-
-        Ok(())
-    }
-
-    pub fn update_items(data: &Self) -> Result<()> {
+    pub fn update_items(data: &NetworkData) -> Result<()> {
         let item = if !data.is_connected {
             BarItem::new("network").icon("󰤮")
         } else {
@@ -233,8 +209,7 @@ impl Network {
 
         api::add_special_item("item", "network.loading", "popup.network", &loading)?;
 
-        // Blocking scan — fine since sketchybar runs scripts async and doesn't wait for them.
-        // sketchybar has already rendered the loading indicator at this point.
+        // Blocking scan
         let networks = Self::scan_networks(&data.device).unwrap_or_default();
         let known = Self::fetch_known_networks(&data.device).unwrap_or_default();
 
@@ -444,6 +419,75 @@ impl Network {
         api::subscribe(&name, [BarEvent::MouseEntered, BarEvent::MouseExited])?;
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl SketchybarItem for Network {
+    async fn setup(&self, exe_path: &str) -> Result<()> {
+        let popup_cmd = daemon_send_script(exe_path, &DaemonCmd::UpdateNetworkPopup);
+
+        let item = BarItem::new("network")
+            .position(ComponentPosition::Right)
+            .update_freq(10)
+            .script(&format!("{} --update-network", exe_path))
+            .click_script(&format!(
+                "sketchybar --set network popup.drawing=toggle; {}",
+                popup_cmd
+            ))
+            .label_drawing(ToggleState::Off)
+            .background_color(CATPUCCIN_MOCHA.surface0)
+            .background_drawing(ToggleState::On)
+            .popup_align(PopupAlign::Right)
+            .popup_background_color(CATPUCCIN_MOCHA.base)
+            .popup_background_border_color(CATPUCCIN_MOCHA.surface1)
+            .popup_background_border_width(2)
+            .popup_background_corner_radius(12);
+
+        item.add()?;
+        item.subscribe([BarEvent::WifiChange])?;
+
+        let data = Self::fetch()?;
+        Self::update_items(&data)?;
+
+        Ok(())
+    }
+
+    async fn spawn_background_task(&self, mut bus: tokio::sync::broadcast::Receiver<Event>) {
+        tokio::spawn(async move {
+            while let Ok(event) = bus.recv().await {
+                match event {
+                    Event::UpdateNetwork => {
+                        if let Err(e) = Self::update_popup().await {
+                            eprintln!("[network] popup update error: {e}");
+                        }
+                    }
+                    Event::NetworkAction(data) => {
+                        if data.action.starts_with("toggle-power:") {
+                            let state = data.action.split(':').nth(1).unwrap_or("on");
+                            let device = data.ssid.unwrap_or_default();
+                            if let Err(e) = Self::toggle_wifi_power(&device, state).await {
+                                eprintln!("[network] toggle power error: {e}");
+                            }
+                        } else if data.action.starts_with("connect:") {
+                            let parts: Vec<&str> = data.action.split(':').collect();
+                            let security = parts.get(1).unwrap_or(&"Open");
+                            let device = parts.get(2).map(|s| s.to_string()).unwrap_or_else(|| {
+                                Self::fetch().map(|d| d.device).unwrap_or_default()
+                            });
+                            let ssid = data.ssid.unwrap_or_default();
+                            if let Err(e) = Self::connect_network(&ssid, &device, security).await {
+                                eprintln!("[network] connect error: {e}");
+                            } else {
+                                let _ = Self::update_command();
+                                let _ = Self::update_popup().await;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        });
     }
 }
 

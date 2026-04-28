@@ -10,6 +10,7 @@ pkg-fmt = "tgz"
 
 [dependencies]
 anyhow = "1.0.102"
+async-trait = "0.1.89"
 base64 = "0.22.1"
 block2 = "0.6"
 btleplug = "0.12"

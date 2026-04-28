@@ -1886,6 +1886,7 @@ name = "sketchybarrc"
 version = "0.2.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "base64",
  "block2 0.6.2",
  "btleplug",

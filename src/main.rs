@@ -4,8 +4,10 @@ use sketchybarrc::api::bar::Bar;
 use sketchybarrc::api::bar::BarPosition;
 use sketchybarrc::themes::CATPUCCIN_MOCHA;
 use std::env;
+use tokio::sync::broadcast;
 
 use sketchybarrc::daemon;
+use sketchybarrc::events::Event;
 use sketchybarrc::items;
 use sketchybarrc::watcher;
 
@@ -16,7 +18,17 @@ async fn main() -> Result<()> {
     if args.len() > 1 {
         // Run as persistent event-loop daemon
         if args[1] == "--daemon" {
-            return daemon::run().await;
+            let (bus, _) = broadcast::channel::<Event>(100);
+
+            // Instantiate all items
+            let items = items::all_items();
+
+            // Spawn background tasks for items that need them
+            for item in &items {
+                item.spawn_background_task(bus.subscribe()).await;
+            }
+
+            return daemon::run(bus).await;
         }
 
         // Send a command to the running daemon
@@ -35,10 +47,7 @@ async fn main() -> Result<()> {
         }
 
         // Handle all other commands through registry
-        if items::ItemRegistry::execute(&args[1], &args[2..])
-            .await?
-            .is_some()
-        {
+        if items::handle_command(&args[1]).await?.is_some() {
             return Ok(());
         }
     }
@@ -131,7 +140,9 @@ async fn main() -> Result<()> {
         .spawn();
 
     // Setup all items
-    items::ItemRegistry::setup_all(&exe_path).await?;
+    for item in items::all_items() {
+        item.setup(&exe_path).await?;
+    }
 
     api::update()?;
     api::trigger_evt("workspace_change")?;
