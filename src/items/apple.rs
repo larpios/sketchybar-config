@@ -91,7 +91,10 @@ impl SketchybarItem for Apple {
         ];
 
         for item in items {
-            crate::api::subscribe(item, vec!["mouse.entered", "mouse.exited"])?;
+            crate::api::subscribe(
+                item,
+                vec!["mouse.entered", "mouse.exited", "mouse.exited.global"],
+            )?;
         }
 
         Ok(())
@@ -101,9 +104,9 @@ impl SketchybarItem for Apple {
 fn menu_item(name: &str, label: &str, command: &str) -> BarItem {
     let script = format!(
         // sh
-        r#"if [ "$SENDER" = "mouse.entered" ]; then 
+        r#"if [ "$SENDER" = "mouse.entered" ]; then
             sketchybar --animate sin 10 --set $NAME background.drawing={}
-        elif [ "$SENDER" = "mouse.exited" ]; then 
+        elif [ "$SENDER" = "mouse.exited" ] || [ "$SENDER" = "mouse.exited.global" ]; then
             sketchybar --animate sin 10 --set $NAME background.drawing={}
         fi"#,
         "on", "off"

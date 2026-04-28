@@ -19,7 +19,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 const MINIMIZED_WIDTH: u32 = 25;
-const PAUSE_TIMEOUT: Duration = Duration::from_mins(5);
+pub const PAUSE_TIMEOUT: Duration = Duration::from_mins(5);
 
 lazy_static! {
     static ref PAUSE_INSTANT: Mutex<Option<Instant>> = Mutex::new(None);
