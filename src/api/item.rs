@@ -184,16 +184,16 @@ impl ToSketchybarArgs for Slider {
     fn to_sketchybar_args(&self) -> Vec<Property> {
         let mut args = vec![];
         if let Some(width) = self.width {
-            args.push(Property::new("slider.width", &width.to_string()));
+            args.push(Property::new("slider.width", width));
         }
         if let Some(percentage) = self.percentage {
-            args.push(Property::new("slider.percentage", &percentage.to_string()));
+            args.push(Property::new("slider.percentage", percentage));
         }
         if let Some(color) = &self.highlight_color {
-            args.push(Property::new("slider.highlight_color", &color.to_string()));
+            args.push(Property::new("slider.highlight_color", color));
         }
         if let Some(knob) = &self.knob {
-            args.push(Property::new("slider.knob", &knob.to_string()));
+            args.push(Property::new("slider.knob", knob));
         }
         if let Some(knob_props) = &self.knob_props {
             args.extend(knob_props.to_sketchybar_args().into_iter().map(|mut p| {

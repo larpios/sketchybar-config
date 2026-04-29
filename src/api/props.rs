@@ -51,16 +51,16 @@ impl ToSketchybarArgs for ShadowProps {
     fn to_sketchybar_args(&self) -> Vec<Property> {
         let mut args = vec![];
         if let Some(drawing) = self.drawing {
-            args.push(Property::new("shadow.drawing", &drawing.to_on_off()));
+            args.push(Property::new("shadow.drawing", drawing.to_on_off()));
         }
         if let Some(color) = &self.color {
-            args.push(Property::new("shadow.color", &color.to_string()));
+            args.push(Property::new("shadow.color", color));
         }
         if let Some(angle) = self.angle {
-            args.push(Property::new("shadow.angle", &angle.to_string()));
+            args.push(Property::new("shadow.angle", angle));
         }
         if let Some(distance) = self.distance {
-            args.push(Property::new("shadow.distance", &distance.to_string()));
+            args.push(Property::new("shadow.distance", distance));
         }
         args
     }
@@ -109,16 +109,16 @@ impl ToSketchybarArgs for Scripting {
         let mut args = vec![];
 
         if let Some(update_freq) = self.update_freq {
-            args.push(Property::new("update_freq", &update_freq.to_string()));
+            args.push(Property::new("update_freq", update_freq));
         }
         if let Some(updates) = self.updates {
-            args.push(Property::new("updates", &updates.to_string()));
+            args.push(Property::new("updates", updates));
         }
         if let Some(script) = &self.script {
-            args.push(Property::new("script", &script.to_string()));
+            args.push(Property::new("script", script));
         }
         if let Some(click_script) = &self.click_script {
-            args.push(Property::new("click_script", &click_script.to_string()));
+            args.push(Property::new("click_script", click_script));
         }
         if let Some(mach_helper) = &self.mach_helper {
             args.push(Property::new("mach_helper", mach_helper));
@@ -283,46 +283,46 @@ impl ToSketchybarArgs for Text {
         let mut args = vec![];
 
         if let Some(drawing) = self.drawing {
-            args.push(Property::new("drawing", &drawing.to_on_off()));
+            args.push(Property::new("drawing", drawing.to_on_off()));
         }
         if let Some(highlight) = self.highlight {
-            args.push(Property::new("highlight", &highlight.to_on_off()));
+            args.push(Property::new("highlight", highlight.to_on_off()));
         }
         if let Some(color) = &self.color {
-            args.push(Property::new("color", &color.to_string()));
+            args.push(Property::new("color", color));
         }
         if let Some(highlight_color) = &self.highlight_color {
             args.push(Property::new(
                 "highlight_color",
-                &highlight_color.to_string(),
+                highlight_color.to_string(),
             ));
         }
         if let Some(padding_left) = self.padding_left {
-            args.push(Property::new("padding_left", &padding_left.to_string()));
+            args.push(Property::new("padding_left", padding_left));
         }
         if let Some(padding_right) = self.padding_right {
-            args.push(Property::new("padding_right", &padding_right.to_string()));
+            args.push(Property::new("padding_right", padding_right));
         }
         if let Some(y_offset) = self.y_offset {
-            args.push(Property::new("y_offset", &y_offset.to_string()));
+            args.push(Property::new("y_offset", y_offset));
         }
         if let Some(font) = &self.font {
-            args.push(Property::new("font", &font.to_string()));
+            args.push(Property::new("font", font));
         }
         if let Some(scroll_duration) = self.scroll_duration {
             args.push(Property::new(
                 "scroll_duration",
-                &scroll_duration.to_string(),
+                scroll_duration.to_string(),
             ));
         }
         if let Some(max_chars) = self.max_chars {
-            args.push(Property::new("max_chars", &max_chars.to_string()));
+            args.push(Property::new("max_chars", max_chars));
         }
         if let Some(width) = self.width {
-            args.push(Property::new("width", &width.to_string()));
+            args.push(Property::new("width", width));
         }
         if let Some(align) = &self.align {
-            args.push(Property::new("align", &align.to_string()));
+            args.push(Property::new("align", align));
         }
 
         if let Some(background) = &self.background {
@@ -425,40 +425,40 @@ impl ToSketchybarArgs for BackgroundProps {
         let mut args = vec![];
 
         if let Some(drawing) = self.drawing {
-            args.push(Property::new("drawing", &drawing.to_on_off()));
+            args.push(Property::new("drawing", drawing.to_on_off()));
         }
         if let Some(color) = &self.color {
-            args.push(Property::new("color", &color.to_string()));
+            args.push(Property::new("color", color));
         }
         if let Some(border_color) = &self.border_color {
-            args.push(Property::new("border_color", &border_color.to_string()));
+            args.push(Property::new("border_color", border_color));
         }
         if let Some(border_width) = self.border_width {
-            args.push(Property::new("border_width", &border_width.to_string()));
+            args.push(Property::new("border_width", border_width));
         }
         if let Some(height) = self.height {
-            args.push(Property::new("height", &height.to_string()));
+            args.push(Property::new("height", height));
         }
         if let Some(corner_radius) = self.corner_radius {
-            args.push(Property::new("corner_radius", &corner_radius.to_string()));
+            args.push(Property::new("corner_radius", corner_radius));
         }
         if let Some(padding_left) = self.padding_left {
-            args.push(Property::new("padding_left", &padding_left.to_string()));
+            args.push(Property::new("padding_left", padding_left));
         }
         if let Some(padding_right) = self.padding_right {
-            args.push(Property::new("padding_right", &padding_right.to_string()));
+            args.push(Property::new("padding_right", padding_right));
         }
         if let Some(y_offset) = self.y_offset {
-            args.push(Property::new("y_offset", &y_offset.to_string()));
+            args.push(Property::new("y_offset", y_offset));
         }
         if let Some(x_offset) = self.x_offset {
-            args.push(Property::new("x_offset", &x_offset.to_string()));
+            args.push(Property::new("x_offset", x_offset));
         }
         if let Some(blur_radius) = self.blur_radius {
-            args.push(Property::new("blur_radius", &blur_radius.to_string()));
+            args.push(Property::new("blur_radius", blur_radius));
         }
         if let Some(clip) = self.clip {
-            args.push(Property::new("clip", &clip.to_on_off()));
+            args.push(Property::new("clip", clip.to_on_off()));
         }
 
         if let Some(image) = &self.image {
@@ -550,35 +550,35 @@ impl ToSketchybarArgs for ImageProps {
         let mut args = vec![];
 
         if let Some(image) = &self.image {
-            args.push(Property::new("", image.to_string().as_str()));
+            args.push(Property::new("", image));
         }
 
         if let Some(drawing) = self.drawing {
-            args.push(Property::new("drawing", &drawing.to_on_off()));
+            args.push(Property::new("drawing", drawing.to_on_off()));
         }
         if let Some(scale) = self.scale {
-            args.push(Property::new("scale", &scale.to_string()));
+            args.push(Property::new("scale", scale));
         }
         if let Some(blur_radius) = self.blur_radius {
-            args.push(Property::new("blur_radius", &blur_radius.to_string()));
+            args.push(Property::new("blur_radius", blur_radius));
         }
         if let Some(border_color) = &self.border_color {
-            args.push(Property::new("border_color", &border_color.to_string()));
+            args.push(Property::new("border_color", border_color));
         }
         if let Some(border_width) = self.border_width {
-            args.push(Property::new("border_width", &border_width.to_string()));
+            args.push(Property::new("border_width", border_width));
         }
         if let Some(corner_radius) = self.corner_radius {
-            args.push(Property::new("corner_radius", &corner_radius.to_string()));
+            args.push(Property::new("corner_radius", corner_radius));
         }
         if let Some(padding_left) = self.padding_left {
-            args.push(Property::new("padding_left", &padding_left.to_string()));
+            args.push(Property::new("padding_left", padding_left));
         }
         if let Some(padding_right) = self.padding_right {
-            args.push(Property::new("padding_right", &padding_right.to_string()));
+            args.push(Property::new("padding_right", padding_right));
         }
         if let Some(y_offset) = self.y_offset {
-            args.push(Property::new("y_offset", &y_offset.to_string()));
+            args.push(Property::new("y_offset", y_offset));
         }
 
         if let Some(shadow) = &self.shadow {
@@ -692,42 +692,42 @@ impl ToSketchybarArgs for Geometry {
         let mut args = vec![];
 
         if let Some(drawing) = self.drawing {
-            args.push(Property::new("drawing", &drawing.to_on_off()));
+            args.push(Property::new("drawing", drawing.to_on_off()));
         }
         if let Some(position) = &self.position {
-            args.push(Property::new("position", &position.to_string()));
+            args.push(Property::new("position", position));
         }
         if let Some(ignore_association) = self.ignore_association {
             args.push(Property::new(
                 "ignore_association",
-                &ignore_association.to_on_off(),
+                ignore_association.to_on_off(),
             ));
         }
         if let Some(scroll_texts) = self.scroll_texts {
-            args.push(Property::new("scroll_texts", &scroll_texts.to_on_off()));
+            args.push(Property::new("scroll_texts", scroll_texts.to_on_off()));
         }
         if let Some(y_offset) = self.y_offset {
-            args.push(Property::new("y_offset", &y_offset.to_string()));
+            args.push(Property::new("y_offset", y_offset));
         }
         if let Some(padding_left) = self.padding_left {
-            args.push(Property::new("padding_left", &padding_left.to_string()));
+            args.push(Property::new("padding_left", padding_left));
         }
         if let Some(padding_right) = self.padding_right {
-            args.push(Property::new("padding_right", &padding_right.to_string()));
+            args.push(Property::new("padding_right", padding_right));
         }
         if let Some(width) = &self.width {
-            args.push(Property::new("width", &width.to_string()));
+            args.push(Property::new("width", width));
         }
         if let Some(blur_radius) = self.blur_radius {
-            args.push(Property::new("blur_radius", &blur_radius.to_string()));
+            args.push(Property::new("blur_radius", blur_radius));
         }
 
         if let Some(space) = self.space {
-            args.push(Property::new("space", &space.to_string()));
+            args.push(Property::new("space", space));
         }
 
         if let Some(display) = &self.display {
-            args.push(Property::new("display", &display.to_string()));
+            args.push(Property::new("display", display));
         }
 
         if let Some(background) = &self.background {
@@ -845,27 +845,27 @@ impl ToSketchybarArgs for PopupProps {
         let mut args = vec![];
 
         if let Some(topmost) = self.topmost {
-            args.push(Property::new("popup.topmost", &topmost.to_on_off()));
+            args.push(Property::new("popup.topmost", topmost.to_on_off()));
         }
 
         if let Some(align) = self.align {
-            args.push(Property::new("popup.align", &align.to_string()));
+            args.push(Property::new("popup.align", align));
         }
 
         if let Some(drawing) = &self.drawing {
-            args.push(Property::new("popup.drawing", &drawing.to_on_off()));
+            args.push(Property::new("popup.drawing", drawing.to_on_off()));
         }
 
         if let Some(y_offset) = self.y_offset {
-            args.push(Property::new("popup.y_offset", &y_offset.to_string()));
+            args.push(Property::new("popup.y_offset", y_offset));
         }
 
         if let Some(blur_radius) = self.blur_radius {
-            args.push(Property::new("popup.blur_radius", &blur_radius.to_string()));
+            args.push(Property::new("popup.blur_radius", blur_radius));
         }
 
         if let Some(horizontal) = self.horizontal {
-            args.push(Property::new("popup.horizontal", &horizontal.to_on_off()));
+            args.push(Property::new("popup.horizontal", horizontal.to_on_off()));
         }
 
         if let Some(background) = &self.background {

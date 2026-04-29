@@ -1,5 +1,5 @@
 use crate::api::event::BarEvent;
-use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign};
+use crate::api::item::{BarItem, ComponentPosition, Font, ItemBuilder, PopupAlign};
 use crate::api::types::ToggleState;
 use crate::children;
 use crate::events::Event;
@@ -223,9 +223,11 @@ impl SketchybarItem for Battery {
                 })
             })
             .with_children(children![
-                BarItem::new("battery.status").icon("Status:"),
-                BarItem::new("battery.wattage").icon("Power:"),
-                BarItem::new("battery.health").icon("Health:"),
+                menu_item("battery.status", "Status:"),
+                divider("battery.div1"),
+                menu_item("battery.wattage", "Power:"),
+                divider("battery.div2"),
+                menu_item("battery.health", "Health:"),
             ]);
 
         item.add()?;
@@ -248,4 +250,32 @@ impl SketchybarItem for Battery {
             }
         });
     }
+}
+fn divider(name: &str) -> BarItem {
+    BarItem::new(name)
+        .width(180)
+        .background(|b| {
+            b.drawing(ToggleState::On)
+                .color(CATPUCCIN_MOCHA.surface1)
+                .height(1)
+        })
+        .padding_left(10)
+        .padding_right(10)
+        .icon_props(|p| p.drawing(ToggleState::Off))
+        .label_props(|p| p.drawing(ToggleState::Off))
+}
+
+fn menu_item(name: &str, icon: &str) -> BarItem {
+    let font = Font {
+        size: 12.0,
+        ..Font::default()
+    };
+    BarItem::new(name)
+        .icon(icon)
+        .icon_props(|i| i.font(font.clone()))
+        .label_props(|l| l.font(font))
+        .width(180)
+        .padding_left(5)
+        .padding_right(5)
+        .background(|b| b.drawing(ToggleState::Off))
 }

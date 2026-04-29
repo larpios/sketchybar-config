@@ -38,13 +38,13 @@ impl ToSketchybarArgs for Graph {
     fn to_sketchybar_args(&self) -> Vec<Property> {
         let mut args = vec![];
         if let Some(color) = &self.color {
-            args.push(Property::new("graph.color", &color.to_string()));
+            args.push(Property::new("graph.color", color));
         }
         if let Some(fill_color) = &self.fill_color {
-            args.push(Property::new("graph.fill_color", &fill_color.to_string()));
+            args.push(Property::new("graph.fill_color", fill_color));
         }
         if let Some(line_width) = self.line_width {
-            args.push(Property::new("graph.line_width", &line_width.to_string()));
+            args.push(Property::new("graph.line_width", line_width));
         }
         if !self.data_points.is_empty() {
             let data = self
@@ -91,10 +91,10 @@ impl ToSketchybarArgs for Space {
     fn to_sketchybar_args(&self) -> Vec<Property> {
         let mut args = vec![];
         if let Some(space) = self.space {
-            args.push(Property::new("space", &space.to_string()));
+            args.push(Property::new("space", space));
         }
         if let Some(display) = self.display {
-            args.push(Property::new("display", &display.to_string()));
+            args.push(Property::new("display", display));
         }
         args
     }
@@ -134,10 +134,10 @@ impl ToSketchybarArgs for Alias {
     fn to_sketchybar_args(&self) -> Vec<Property> {
         let mut args = vec![];
         if let Some(color) = &self.color {
-            args.push(Property::new("alias.color", &color.to_string()));
+            args.push(Property::new("alias.color", color));
         }
         if let Some(scale) = self.scale {
-            args.push(Property::new("alias.scale", &scale.to_string()));
+            args.push(Property::new("alias.scale", scale));
         }
         args
     }

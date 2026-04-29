@@ -6,3 +6,10 @@ macro_rules! children {
         ]
     };
 }
+
+#[macro_export]
+macro_rules! properties {
+    ($(($prop:expr, $value:expr)),* $(,)?) => {
+        vec![$(Property::new($prop, $value)),*]
+    };
+}

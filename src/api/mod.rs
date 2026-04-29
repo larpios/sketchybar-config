@@ -15,7 +15,7 @@ use anyhow::{Ok, Result};
 use crate::api::bar::Bar;
 use crate::api::components::{Bracket, Space};
 use crate::api::event::BarEvent;
-use crate::api::item::{BarItem, PopupChild, Slider};
+use crate::api::item::{BarItem, PopupChild, Property, Slider};
 use crate::api::props::ComponentPosition;
 use crate::api::types::{RelativePosition, ToSketchybarArgs};
 
@@ -68,10 +68,10 @@ pub fn add_bar(bar: &Bar) -> Result<()> {
 pub fn set_default<I, S>(args: I) -> Result<()>
 where
     I: IntoIterator<Item = S>,
-    S: AsRef<str>,
+    S: Into<Property>,
 {
     let mut cmd_args = vec!["--default".to_string()];
-    cmd_args.extend(args.into_iter().map(|s| s.as_ref().to_string()));
+    cmd_args.extend(args.into_iter().map(|s| s.into().to_string()));
     sb!(cmd_args)?;
     Ok(())
 }

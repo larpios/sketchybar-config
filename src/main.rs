@@ -2,6 +2,8 @@ use anyhow::{Ok, Result};
 use sketchybarrc::api;
 use sketchybarrc::api::bar::Bar;
 use sketchybarrc::api::bar::BarPosition;
+use sketchybarrc::api::item::Property;
+use sketchybarrc::properties;
 use sketchybarrc::themes::CATPUCCIN_MOCHA;
 use std::env;
 use tokio::sync::broadcast;
@@ -112,22 +114,23 @@ async fn main() -> Result<()> {
     api::add_bar(&bar)?;
 
     // Set defaults from nushell config
-    api::set_default([
-        "icon.font=JetBrainsMono Nerd Font:Regular:14.0",
-        &format!("icon.color={}", CATPUCCIN_MOCHA.text),
-        "label.font=JetBrainsMono Nerd Font:Regular:12.0",
-        &format!("label.color={}", CATPUCCIN_MOCHA.text),
-        "padding_left=4",
-        "padding_right=4",
-        "icon.padding_left=6",
-        "icon.padding_right=6",
-        "label.padding_left=6",
-        "label.padding_right=6",
-        &format!("background.color={}", CATPUCCIN_MOCHA.surface0),
-        "background.corner_radius=9",
-        "background.height=20",
-        &format!("icon.highlight_color={}", CATPUCCIN_MOCHA.mauve),
-        &format!("label.highlight_color={}", CATPUCCIN_MOCHA.mauve),
+    api::set_default(properties![
+        ("icon.font", "JetBrainsMono Nerd Font:Regular:14.0"),
+        ("label.font", "JetBrainsMono Nerd Font:Regular:14.0"),
+        ("icon.color", CATPUCCIN_MOCHA.text),
+        ("label.font", "JetBrainsMono Nerd Font:Regular:12.0"),
+        ("label.color", CATPUCCIN_MOCHA.text),
+        ("padding_left", 4),
+        ("padding_right", 4),
+        ("icon.padding_left", 6),
+        ("icon.padding_right", 6),
+        ("label.padding_left", 6),
+        ("label.padding_right", 6),
+        ("background.color", CATPUCCIN_MOCHA.surface0),
+        ("background.corner_radius", 9),
+        ("background.height", 20),
+        ("icon.highlight_color", CATPUCCIN_MOCHA.mauve),
+        ("label.highlight_color", CATPUCCIN_MOCHA.mauve)
     ])?;
 
     let exe_path = env::current_exe()?.to_string_lossy().to_string();

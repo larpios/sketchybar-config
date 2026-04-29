@@ -6,6 +6,27 @@ pub struct Property {
     pub value: String,
 }
 
+impl FromStr for Property {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (property, value) = s.split_once('=').ok_or("invalid property")?;
+        Ok(Property {
+            property: property.to_string(),
+            value: value.to_string(),
+        })
+    }
+}
+
+impl<T: ToString, U: ToString> From<(T, U)> for Property {
+    fn from((property, value): (T, U)) -> Self {
+        Self {
+            property: property.to_string(),
+            value: value.to_string(),
+        }
+    }
+}
+
 impl Display for Property {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}={}", self.property, self.value)
@@ -13,7 +34,7 @@ impl Display for Property {
 }
 
 impl Property {
-    pub fn new(property: &str, value: &str) -> Self {
+    pub fn new<T: ToString, U: ToString>(property: T, value: U) -> Self {
         Self {
             property: property.to_string(),
             value: value.to_string(),
