@@ -230,6 +230,9 @@ impl ToSketchybarArgs for Bracket {
         let mut args = vec![];
         // Note: members are used during creation (--add bracket name member1 member2)
         // This struct handles properties set via --set
+        if let Some(geometry) = &self.geometry {
+            args.extend(geometry.to_sketchybar_args());
+        }
         if let Some(bg) = &self.background {
             args.extend(bg.to_sketchybar_args().into_iter().map(|mut p| {
                 p.property = format!("background.{}", p.property);

@@ -31,12 +31,15 @@ impl Workspaces {
             let is_active = i == ws_id.parse().unwrap_or(0);
 
             let active_bg = CATPUCCIN_MOCHA.mauve;
-            let inactive_bg = CATPUCCIN_MOCHA.surface1;
+            let inactive_bg = CATPUCCIN_MOCHA.transparent;
             let active_icon = CATPUCCIN_MOCHA.crust;
             let inactive_icon = CATPUCCIN_MOCHA.text;
 
             BarItem::new(&ws_name)
-                .background(|b| b.color(if is_active { active_bg } else { inactive_bg }))
+                .background(|b| {
+                    b.color(if is_active { active_bg } else { inactive_bg })
+                        .drawing(ToggleState::On)
+                })
                 .icon_props(|t| {
                     t.color(if is_active {
                         active_icon
@@ -62,7 +65,7 @@ impl SketchybarItem for Workspaces {
                 .padding_left(0)
                 .padding_right(0)
                 .background(|b| {
-                    b.color(CATPUCCIN_MOCHA.surface1)
+                    b.color(CATPUCCIN_MOCHA.transparent)
                         .corner_radius(6)
                         .drawing(ToggleState::On)
                 })
@@ -84,9 +87,9 @@ impl SketchybarItem for Workspaces {
             .fold(bracket, |b, i| b.add_member(format!("workspace.{}", i)))
             .background_color(CATPUCCIN_MOCHA.surface1)
             .background_drawing(ToggleState::On)
-            .background_corner_radius(6)
-            .padding_left(0)
-            .padding_right(0)
+            .background_corner_radius(10)
+            .padding_left(4)
+            .padding_right(4)
             .add();
 
         use crate::api::event::BarEvent;

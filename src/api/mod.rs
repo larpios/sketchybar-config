@@ -122,7 +122,22 @@ pub fn add_item(item: &BarItem) -> Result<()> {
 }
 
 pub fn add_bracket(bracket: &Bracket) -> Result<()> {
-    add_special_item("bracket", bracket.name.as_str(), None, bracket)
+    let name = bracket.name.as_str();
+    let _ = Command::new("sketchybar").args(["--remove", name]).output();
+
+    let mut args = vec!["--add".to_string(), "bracket".to_string(), name.to_string()];
+    args.extend(bracket.members.clone());
+    args.extend(["--set".to_string(), name.to_string()]);
+
+    args.extend(
+        bracket
+            .to_sketchybar_args()
+            .iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<String>>(),
+    );
+
+    sb!(args)
 }
 
 pub fn add_slider(slider: &Slider) -> Result<()> {
