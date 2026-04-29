@@ -9,11 +9,23 @@ pub struct Cpu;
 
 impl Cpu {
     pub fn update_command() -> Result<()> {
+        // This is now mostly for manual triggers.
+        // For accuracy in short-lived processes, sysinfo needs a delay between refreshes.
         let mut sys = System::new_all();
-        sys.refresh_cpu_all();
+        sys.refresh_cpu_usage();
+        std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+        sys.refresh_cpu_usage();
 
+        Self::update_with_sys(&mut sys)
+    }
+
+    fn update_with_sys(sys: &mut System) -> Result<()> {
         let mut total_usage = 0.0;
         let cpus = sys.cpus();
+        if cpus.is_empty() {
+            return Ok(());
+        }
+
         for cpu in cpus {
             total_usage += cpu.cpu_usage();
         }
@@ -29,31 +41,45 @@ impl Cpu {
 
 #[async_trait]
 impl SketchybarItem for Cpu {
-    async fn setup(&self, exe_path: &str) -> Result<()> {
+    async fn setup(&self, _exe_path: &str) -> Result<()> {
         use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, ToggleState};
         use crate::themes::CATPUCCIN_MOCHA;
 
         let item = BarItem::new_with_pos("cpu", ComponentPosition::Right)
-            .update_freq(2)
-            .script(&format!("{} --update-cpu", exe_path))
             .icon("")
             .icon_props(|p| p.color(CATPUCCIN_MOCHA.red))
             .background(|b| b.color(CATPUCCIN_MOCHA.surface0).drawing(ToggleState::On));
 
         item.add()?;
 
-        Self::update_command()?;
+        // Initial update will be handled by the background task
+        // but we can do a quick one here if we want (it will be 0% or sleep-based)
+        // Self::update_command()?;
 
         Ok(())
     }
 
     async fn spawn_background_task(&self, mut bus: tokio::sync::broadcast::Receiver<Event>) {
         tokio::spawn(async move {
-            while let Ok(event) = bus.recv().await {
-                if matches!(event, Event::UpdateCpu)
-                    && let Err(e) = Self::update_command()
-                {
-                    eprintln!("[cpu] update error: {e}");
+            let mut sys = System::new_all();
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+
+            loop {
+                tokio::select! {
+                    _ = interval.tick() => {
+                        sys.refresh_cpu_usage();
+                        if let Err(e) = Self::update_with_sys(&mut sys) {
+                            eprintln!("[cpu] background update error: {e}");
+                        }
+                    }
+                    Ok(event) = bus.recv() => {
+                        if matches!(event, Event::UpdateCpu) {
+                            sys.refresh_cpu_usage();
+                            if let Err(e) = Self::update_with_sys(&mut sys) {
+                                eprintln!("[cpu] manual update error: {e}");
+                            }
+                        }
+                    }
                 }
             }
         });
