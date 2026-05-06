@@ -22,7 +22,6 @@ impl SketchybarItem for Apple {
             })
             .background(|b| b.drawing(ToggleState::Off))
             .label_props(|p| p.drawing(ToggleState::Off))
-            .padding_right(15)
             .click_script("sketchybar --animate sin 15 --set $NAME popup.drawing=toggle")
             .popup(|p| {
                 p.drawing(ToggleState::Off)
