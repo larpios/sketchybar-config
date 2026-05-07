@@ -279,7 +279,7 @@ impl Display for PopupAlign {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum WidthMode {
-    Value(u32),
+    Fixed(u32),
     #[default]
     Dyanmic,
 }
@@ -287,7 +287,7 @@ pub enum WidthMode {
 impl Display for WidthMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Value(value) => write!(f, "{}", value),
+            Self::Fixed(value) => write!(f, "{}", value),
             Self::Dyanmic => write!(f, "dynamic"),
         }
     }
@@ -305,6 +305,45 @@ impl Display for RelativePosition {
         match self {
             Self::Before => write!(f, "before"),
             Self::After => write!(f, "after"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum AnimationCurve {
+    #[default]
+    Linear,
+    Quadratic,
+    Tanh,
+    Sin,
+    Exp,
+    Circ,
+}
+
+impl Display for AnimationCurve {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Linear => write!(f, "linear"),
+            Self::Quadratic => write!(f, "quadratic"),
+            Self::Tanh => write!(f, "tanh"),
+            Self::Sin => write!(f, "sin"),
+            Self::Exp => write!(f, "exp"),
+            Self::Circ => write!(f, "circ"),
+        }
+    }
+}
+
+impl FromStr for AnimationCurve {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "linear" => Ok(Self::Linear),
+            "quadratic" => Ok(Self::Quadratic),
+            "tanh" => Ok(Self::Tanh),
+            "sin" => Ok(Self::Sin),
+            "exp" => Ok(Self::Exp),
+            "circ" => Ok(Self::Circ),
+            _ => Err(()),
         }
     }
 }

@@ -124,7 +124,6 @@ async fn main() -> Result<()> {
         ("padding_right", 4),
         ("icon.padding_left", 6),
         ("icon.padding_right", 6),
-        ("label.padding_left", 6),
         ("label.padding_right", 6),
         ("background.color", CATPUCCIN_MOCHA.surface0),
         ("background.corner_radius", 9),

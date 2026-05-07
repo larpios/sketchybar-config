@@ -211,7 +211,8 @@ pub struct Text {
     pub padding_right: Option<u32>,
     pub y_offset: Option<i32>,
     pub font: Option<Font>,
-    pub scroll_duration: Option<f32>,
+    /// Sets the scroll speed of text trucated by `max_chars` on items with `scroll_texts` enabled
+    pub scroll_duration: Option<u32>,
     pub max_chars: Option<u32>,
     pub width: Option<WidthMode>,
     pub align: Option<TextAlignment>,
@@ -252,7 +253,7 @@ impl Text {
         self.font = Some(font);
         self
     }
-    pub fn scroll_duration(mut self, duration: f32) -> Self {
+    pub fn scroll_duration(mut self, duration: u32) -> Self {
         self.scroll_duration = Some(duration);
         self
     }

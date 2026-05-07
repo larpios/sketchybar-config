@@ -8,6 +8,7 @@ pub mod media;
 pub mod network;
 pub mod volume;
 pub mod weather;
+pub mod window;
 pub mod workspaces;
 
 use crate::events::Event;
@@ -24,6 +25,7 @@ pub fn all_items() -> Vec<Box<dyn SketchybarItem>> {
     vec![
         Box::new(apple::Apple),
         Box::new(workspaces::Workspaces),
+        Box::new(window::Window),
         Box::new(media::Media),
         Box::new(clock::Clock),
         Box::new(weather::Weather),
@@ -49,6 +51,7 @@ pub async fn handle_command(cmd: &str) -> Result<Option<()>> {
         "--update-volume" => Ok(Some(volume::Volume::update_command()?)),
         "--update-media" => Ok(Some(media::Media::update_command()?)),
         "--update-workspaces" => Ok(Some(workspaces::Workspaces::update_command()?)),
+        "--update-window" => Ok(Some(window::Window::update_command()?)),
         "--update-bluetooth" => Ok(Some(bluetooth::Bluetooth::update().await?)),
         _ => Ok(None),
     }

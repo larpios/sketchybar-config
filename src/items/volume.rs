@@ -1,7 +1,7 @@
 use crate::api;
 use crate::api::event::BarEvent;
 use crate::api::item::{BarItem, ComponentPosition, ItemBuilder, PopupAlign, Slider};
-use crate::api::types::ToggleState;
+use crate::api::types::{AnimationCurve, ToggleState};
 use crate::children;
 use crate::events::Event;
 use crate::items::SketchybarItem;
@@ -67,7 +67,7 @@ impl Volume {
                 BarEvent::MouseClicked if name == "volume" => {
                     BarItem::new("volume")
                         .popup(|p| p.drawing(ToggleState::Toggle))
-                        .animate_set("sin", 15)?;
+                        .animate_set(AnimationCurve::Sin, 15)?;
                 }
                 _ => {}
             }

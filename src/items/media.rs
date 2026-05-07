@@ -2,7 +2,7 @@ use crate::api::event::BarEvent;
 use crate::api::item::{
     BarItem, ComponentPosition, ImageType, ItemBuilder, PopupAlign, TextAlignment, ToggleState,
 };
-use crate::api::types::{Argb, Font, FontStyle};
+use crate::api::types::{AnimationCurve, Argb, Font, FontStyle};
 use crate::api::{self};
 use crate::children;
 use crate::events::Event;
@@ -115,7 +115,7 @@ impl Media {
             BarItem::new_with_pos("media", ComponentPosition::Left)
                 .width(MINIMIZED_WIDTH)
                 .label_props(|p| p.drawing(ToggleState::Off))
-                .animate_set("sin", 15)?;
+                .animate_set(AnimationCurve::Circ, 15)?;
 
             return Ok(());
         }
@@ -128,7 +128,7 @@ impl Media {
             .scroll_texts(ToggleState::On)
             .icon_props(|p| p.drawing(ToggleState::On));
 
-        media_item.animate_set("sin", 15)?;
+        media_item.animate_set(AnimationCurve::Circ, 15)?;
 
         let artwork_path = data_dir().join("artwork.jpeg");
         let _ = std::fs::remove_file(&artwork_path);

@@ -29,7 +29,7 @@ pub trait ItemBuilder: Sized {
     }
 
     fn width(mut self, width: u32) -> Self {
-        self.item_props_mut().geometry.width = Some(WidthMode::Value(width));
+        self.item_props_mut().geometry.width = Some(WidthMode::Fixed(width));
         self
     }
 

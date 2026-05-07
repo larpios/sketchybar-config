@@ -17,7 +17,7 @@ use crate::api::components::{Bracket, Space};
 use crate::api::event::BarEvent;
 use crate::api::item::{BarItem, PopupChild, Property, Slider};
 use crate::api::props::ComponentPosition;
-use crate::api::types::{RelativePosition, ToSketchybarArgs};
+use crate::api::types::{AnimationCurve, RelativePosition, ToSketchybarArgs};
 
 macro_rules! sb {
     ($args:ident) => {
@@ -214,7 +214,7 @@ pub fn clone_item(
 }
 
 pub fn animate_set_item<T: ToSketchybarArgs>(
-    curve: &str,
+    curve: AnimationCurve,
     duration: u32,
     item_name: &str,
     item: &T,

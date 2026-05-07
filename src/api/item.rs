@@ -1,5 +1,6 @@
 pub use crate::api::builder::ItemBuilder;
 pub use crate::api::props::*;
+use crate::api::types::AnimationCurve;
 use anyhow::Result;
 
 #[derive(Debug, Clone)]
@@ -58,7 +59,7 @@ impl BarItem {
         crate::api::set_item(&self.name, self)
     }
 
-    pub fn animate_set(&self, curve: &str, duration: u32) -> Result<()> {
+    pub fn animate_set(&self, curve: AnimationCurve, duration: u32) -> Result<()> {
         crate::api::animate_set_item(curve, duration, &self.name, self)
     }
 
@@ -133,7 +134,7 @@ impl Slider {
         crate::api::set_item(&self.name, self)
     }
 
-    pub fn animate_set(&self, curve: &str, duration: u32) -> Result<()> {
+    pub fn animate_set(&self, curve: AnimationCurve, duration: u32) -> Result<()> {
         crate::api::animate_set_item(curve, duration, &self.name, self)
     }
 
