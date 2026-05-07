@@ -7,7 +7,6 @@ use crate::api::{self};
 use crate::children;
 use crate::events::Event;
 use crate::items::SketchybarItem;
-use crate::path::data_dir;
 use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -124,34 +123,22 @@ impl Media {
             .drawing(ToggleState::On)
             .width(240)
             .label(&data.title)
-            .label_props(|p| p.max_chars(28).drawing(ToggleState::On))
+            .label_props(|p| {
+                p.max_chars(29)
+                    .scroll_duration(150)
+                    .drawing(ToggleState::On)
+            })
             .scroll_texts(ToggleState::On)
             .icon_props(|p| p.drawing(ToggleState::On));
 
         media_item.animate_set(AnimationCurve::Circ, 15)?;
 
-        let artwork_path = data_dir().join("artwork.jpeg");
-        let _ = std::fs::remove_file(&artwork_path);
-
-        let _ = data
-            .artwork
-            .save_with_format(&artwork_path, image::ImageFormat::Jpeg);
-
         // Popups
-        BarItem::new("media.cover")
-            .drawing(ToggleState::On)
-            .background(|b| {
-                b.image(
-                    ImageType::Path(artwork_path.display().to_string())
-                        .into_props()
-                        .drawing(ToggleState::On),
-                )
-            })
-            .set()?;
+        BarItem::new("media.cover").drawing(ToggleState::On).set()?;
 
         BarItem::new("media.title")
             .label(&data.title)
-            .label_props(|p| p.drawing(ToggleState::On))
+            .label_props(|p| p.drawing(ToggleState::On).scroll_duration(150))
             .set()?;
         BarItem::new("media.artist")
             .label(&data.artist)
