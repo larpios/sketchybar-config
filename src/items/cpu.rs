@@ -11,7 +11,7 @@ impl Cpu {
     pub fn update_command() -> Result<()> {
         // This is now mostly for manual triggers.
         // For accuracy in short-lived processes, sysinfo needs a delay between refreshes.
-        let mut sys = System::new_all();
+        let mut sys = System::new();
         sys.refresh_cpu_usage();
         std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
         sys.refresh_cpu_usage();
@@ -61,7 +61,7 @@ impl SketchybarItem for Cpu {
 
     async fn spawn_background_task(&self, mut bus: tokio::sync::broadcast::Receiver<Event>) {
         tokio::spawn(async move {
-            let mut sys = System::new_all();
+            let mut sys = System::new();
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
 
             loop {

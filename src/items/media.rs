@@ -10,7 +10,6 @@ use crate::items::SketchybarItem;
 use crate::themes::CATPUCCIN_MOCHA;
 use anyhow::Result;
 use async_trait::async_trait;
-use image::DynamicImage;
 use lazy_static::lazy_static;
 use media_remote::{Controller, NowPlayingJXA};
 use std::env;
@@ -32,7 +31,6 @@ pub struct MediaData {
     pub duration: f64,
     pub elapsed_time: f64,
     pub is_playing: bool,
-    pub artwork: DynamicImage,
 }
 
 impl MediaData {
@@ -45,11 +43,15 @@ impl MediaData {
     }
 }
 
+lazy_static! {
+    pub static ref NOW_PLAYING: Mutex<NowPlayingJXA> = Mutex::new(NowPlayingJXA::new(Duration::from_secs(1)));
+}
+
 pub struct Media;
 
 impl Media {
     pub fn fetch() -> Result<MediaData> {
-        let now_playing = NowPlayingJXA::new(Duration::from_secs(1));
+        let now_playing = NOW_PLAYING.lock().unwrap();
 
         let guard = now_playing.get_info();
         let info = guard.as_ref();
@@ -62,7 +64,6 @@ impl Media {
                 duration: info.duration.unwrap_or_default(),
                 elapsed_time: info.elapsed_time.unwrap_or_default(),
                 is_playing: info.is_playing.unwrap_or_default(),
-                artwork: info.album_cover.clone().unwrap_or_default(),
             });
         }
 
@@ -78,7 +79,7 @@ impl Media {
         let sender = env::var("SENDER").unwrap_or_else(|_| "".to_string());
 
         if sender == "mouse.clicked" {
-            let now_playing = NowPlayingJXA::new(Duration::from_secs(1));
+            let now_playing = NOW_PLAYING.lock().unwrap();
 
             match name.as_str() {
                 "media.prev" => {

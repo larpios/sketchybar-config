@@ -4,7 +4,6 @@ use core_foundation::base::TCFType;
 use core_foundation::runloop::{CFRunLoop, kCFRunLoopDefaultMode};
 use core_foundation::string::CFString;
 use lazy_static::lazy_static;
-use media_remote::NowPlayingJXA;
 use std::os::raw::c_void;
 use std::ptr;
 use std::sync::Mutex;
@@ -84,11 +83,14 @@ pub fn watch(bus: EventBus) -> anyhow::Result<()> {
         let mut last_had_info = false;
         let mut last_activity = Instant::now();
         loop {
-            let now_playing = NowPlayingJXA::new(Duration::from_secs(1));
-            let guard = now_playing.get_info();
-            let info = guard.as_ref();
-            let has_info = info.is_some();
-            let is_playing = info.as_ref().and_then(|i| i.is_playing).unwrap_or(false);
+            let (has_info, is_playing) = {
+                let now_playing = crate::items::media::NOW_PLAYING.lock().unwrap();
+                let guard = now_playing.get_info();
+                let info = guard.as_ref();
+                let has_info = info.is_some();
+                let is_playing = info.as_ref().and_then(|i| i.is_playing).unwrap_or(false);
+                (has_info, is_playing)
+            };
 
             if is_playing || has_info != last_had_info {
                 last_activity = Instant::now();

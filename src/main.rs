@@ -58,30 +58,32 @@ async fn main() -> Result<()> {
     // Gracefully stop the previous daemon if it's running
     let _ = daemon::stop().await;
 
-    // Use sysinfo to find and kill old background processes
-    use sysinfo::System;
-    let mut sys = System::new_all();
-    sys.refresh_all();
+    {
+        // Use sysinfo to find and kill old background processes
+        use sysinfo::System;
+        let mut sys = System::new_all();
+        sys.refresh_all();
 
-    let current_pid = sysinfo::get_current_pid().ok();
+        let current_pid = sysinfo::get_current_pid().ok();
 
-    for (pid, process) in sys.processes() {
-        if Some(*pid) == current_pid {
-            continue;
-        }
+        for (pid, process) in sys.processes() {
+            if Some(*pid) == current_pid {
+                continue;
+            }
 
-        let cmd = process.cmd();
-        let cmd_str = cmd.iter().map(|s| s.to_string_lossy()).collect::<Vec<_>>();
+            let cmd = process.cmd();
+            let cmd_str = cmd.iter().map(|s| s.to_string_lossy()).collect::<Vec<_>>();
 
-        // Match our binary and ensure it's a background process
-        let is_our_binary = cmd_str
-            .first()
-            .is_some_and(|arg| arg.contains("sketchybarrc"));
-        let is_watcher = cmd_str.iter().any(|arg| arg == "--watcher");
-        let is_daemon = cmd_str.iter().any(|arg| arg == "--daemon");
+            // Match our binary and ensure it's a background process
+            let is_our_binary = cmd_str
+                .first()
+                .is_some_and(|arg| arg.contains("sketchybarrc"));
+            let is_watcher = cmd_str.iter().any(|arg| arg == "--watcher");
+            let is_daemon = cmd_str.iter().any(|arg| arg == "--daemon");
 
-        if is_our_binary && (is_watcher || is_daemon) {
-            process.kill();
+            if is_our_binary && (is_watcher || is_daemon) {
+                process.kill();
+            }
         }
     }
 
