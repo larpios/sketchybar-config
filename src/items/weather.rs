@@ -17,7 +17,7 @@ impl Weather {
         Self::update_items(&data)
     }
     pub fn fetch() -> anyhow::Result<WeatherData> {
-        let temp = match ureq::get("https://wttr.in/?format=%t").call() {
+        let temp = match ureq::get("https://wttr.in/?format=%t&m").call() {
             Ok(response) => {
                 let text = response
                     .into_body()
